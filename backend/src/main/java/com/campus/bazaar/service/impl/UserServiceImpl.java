@@ -15,9 +15,9 @@ import com.campus.bazaar.utils.RedisConstants;
 import com.campus.bazaar.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
@@ -35,6 +35,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Resource
     private IUserInfoService userInfoService;
+
+    /** BCrypt 密码加密器（自带随机盐，替代裸 MD5） */
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     /** 全局兜底验证码 */
     private static final String DEV_FIXED_CODE = "888888";
@@ -145,9 +148,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("用户不存在");
         }
 
-        // 3. 校验密码
-        String inputPassword = DigestUtils.md5DigestAsHex(form.getPassword().getBytes());
-        if (!inputPassword.equals(user.getPassword())) {
+        // 3. 校验密码（BCrypt：自带随机盐，抗彩虹表）
+        if (!PASSWORD_ENCODER.matches(form.getPassword(), user.getPassword())) {
             return Result.fail("密码错误");
         }
 
@@ -258,8 +260,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         // 2. 校验参数
-        if (StrUtil.isBlank(oldPassword) || StrUtil.isBlank(newPassword)) {
-            return Result.fail("密码不能为空");
+        if (StrUtil.isBlank(newPassword)) {
+            return Result.fail("新密码不能为空");
         }
         if (newPassword.length() < 6 || newPassword.length() > 20) {
             return Result.fail("密码长度需要在6-20位之间");
@@ -271,14 +273,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("用户不存在");
         }
 
-        // 4. 校验旧密码
-        String oldPwd = DigestUtils.md5DigestAsHex(oldPassword.getBytes());
-        if (!oldPwd.equals(user.getPassword())) {
-            return Result.fail("旧密码错误");
+        // 4. 校验旧密码（BCrypt；未设置过密码时允许直接设置）
+        if (StrUtil.isNotBlank(user.getPassword())) {
+            if (!PASSWORD_ENCODER.matches(oldPassword, user.getPassword())) {
+                return Result.fail("旧密码错误");
+            }
         }
 
-        // 5. 更新密码
-        String newPwd = DigestUtils.md5DigestAsHex(newPassword.getBytes());
+        // 5. 更新密码（BCrypt 加密存储，自带盐）
+        String newPwd = PASSWORD_ENCODER.encode(newPassword);
         User updateUser = new User();
         updateUser.setId(userId);
         updateUser.setPassword(newPwd);

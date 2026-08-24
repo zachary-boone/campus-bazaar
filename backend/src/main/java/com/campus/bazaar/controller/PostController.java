@@ -37,10 +37,25 @@ public class PostController {
         // 获取登录用户
         UserDTO user = UserHolder.getUser();
         post.setUserId(user.getId());
-        // 保存探店博文
-        postService.save(post);
-        // 返回id
-        return Result.ok(post.getId());
+        if (post.getGoodsId() == null) {
+            post.setGoodsId(0L); // 不关联商品的普通帖子
+        }
+        if (post.getImages() == null) {
+            post.setImages(""); // 无图帖子
+        }
+        // 保存并推送关注流（Feed 推模式）
+        return postService.savePostWithFeed(post);
+    }
+
+    /**
+     * 关注流（滚动分页）
+     * @param lastId 上次返回的 minTime（首次不传）
+     * @param offset 与 lastId 同分的偏移（首次不传）
+     */
+    @GetMapping("/of/follow")
+    public Result queryFollowFeed(@RequestParam(value = "lastId", required = false) Long lastId,
+                                  @RequestParam(value = "offset", required = false) Integer offset) {
+        return postService.queryFollowFeed(lastId, offset);
     }
 
     @PutMapping("/like/{id}")

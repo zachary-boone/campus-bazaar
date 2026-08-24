@@ -54,4 +54,14 @@ public interface IGoodsService extends IService<Goods> {
      * @return 操作结果
      */
     Result deleteGoods(Long goodsId);
+
+    /**
+     * 附近商品检索（Redis GEO 半径查询，按距离升序）
+     * @param x      中心经度
+     * @param y      中心纬度
+     * @param radius 半径（公里）
+     * @param area   校区（可空）
+     * @return 商品列表（含 distance 距离）
+     */
+    Result queryNearbyGoods(Double x, Double y, Double radius, String area);
 }

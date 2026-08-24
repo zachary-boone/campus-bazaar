@@ -48,6 +48,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/code",
                         "/user/login",
+                        "/user/login/password",
                         "/user/info/**",
                         "/error",
                         "/favicon.ico",

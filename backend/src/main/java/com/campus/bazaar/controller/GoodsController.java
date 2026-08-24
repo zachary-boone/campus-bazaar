@@ -112,4 +112,19 @@ public class GoodsController {
     public Result queryMyGoods(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return goodsService.queryMyGoods(current);
     }
+
+    /**
+     * 附近商品（Redis GEO 半径检索，按距离升序）
+     * @param x      中心经度
+     * @param y      中心纬度
+     * @param radius 半径（公里，默认 3）
+     * @param area   校区（可空，空则全校区）
+     */
+    @GetMapping("/of/nearby")
+    public Result queryNearbyGoods(@RequestParam("x") Double x,
+                                   @RequestParam("y") Double y,
+                                   @RequestParam(value = "radius", defaultValue = "3") Double radius,
+                                   @RequestParam(value = "area", required = false) String area) {
+        return goodsService.queryNearbyGoods(x, y, radius, area);
+    }
 }

@@ -1,6 +1,7 @@
 package com.campus.bazaar.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -17,13 +18,22 @@ import com.campus.bazaar.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.data.geo.Circle;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.GeoResult;
+import org.springframework.data.geo.GeoResults;
+import org.springframework.data.geo.Point;
+import org.springframework.data.redis.connection.RedisGeoCommands;
+import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -39,9 +49,14 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     @Resource
     private RedissonClient redissonClient;
 
+    /** 默认坐标（前端未传经纬度时兜底，可配置） */
+    private static final double DEFAULT_X = 114.3055;
+    private static final double DEFAULT_Y = 30.5928;
+
     @Override
     public Result queryById(Long id) {
-        Goods goods = queryWithMutex(id);
+        // 逻辑过期方案：热点数据异步重建，读多写少场景性能最好
+        Goods goods = queryWithLogicalExpire(id);
         if (goods == null) {
             return Result.fail("商品不存在");
         }
@@ -75,11 +90,19 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (goods.getScore() == null) {
             goods.setScore(50);
         }
+        if (goods.getX() == null || goods.getY() == null) {
+            goods.setX(DEFAULT_X);
+            goods.setY(DEFAULT_Y);
+        }
         goods.setCreateTime(LocalDateTime.now());
         goods.setUpdateTime(LocalDateTime.now());
 
         // 4. 保存商品
         save(goods);
+
+        // 5. 缓存预热（逻辑过期格式）+ GEO 坐标写入
+        saveGoodsWithLogicalExpire(RedisConstants.CACHE_GOODS_KEY + goods.getId(), goods);
+        addGoodsGeo(goods);
 
         return Result.ok(goods.getId());
     }
@@ -105,8 +128,14 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         goods.setUpdateTime(LocalDateTime.now());
         updateById(goods);
 
-        // 5. 清除缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_GOODS_KEY + goods.getId());
+        // 5. 延迟双删缓存：先删 → 更库已提交 → 延迟再删，防止期间旧值回写
+        deleteCacheWithDelay(goods.getId());
+
+        // 6. 更新 GEO 坐标
+        if (goods.getX() != null && goods.getY() != null) {
+            removeGoodsGeo(oldGoods);
+            addGoodsGeo(goods);
+        }
 
         return Result.ok();
     }
@@ -133,8 +162,9 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         goods.setUpdateTime(LocalDateTime.now());
         updateById(goods);
 
-        // 5. 清除缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_GOODS_KEY + goodsId);
+        // 5. 延迟双删缓存 + 移除 GEO
+        deleteCacheWithDelay(goodsId);
+        removeGoodsGeo(goods);
 
         return Result.ok();
     }
@@ -161,8 +191,9 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         goods.setUpdateTime(LocalDateTime.now());
         updateById(goods);
 
-        // 5. 清除缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_GOODS_KEY + goodsId);
+        // 5. 延迟双删缓存 + 恢复 GEO
+        deleteCacheWithDelay(goodsId);
+        addGoodsGeo(goods);
 
         return Result.ok();
     }
@@ -208,10 +239,165 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         // 4. 删除商品
         removeById(goodsId);
 
-        // 5. 清除缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_GOODS_KEY + goodsId);
+        // 5. 延迟双删缓存 + 移除 GEO
+        deleteCacheWithDelay(goodsId);
+        removeGoodsGeo(goods);
 
         return Result.ok();
+    }
+
+    // ==================== GEO 附近商品 ====================
+
+    /**
+     * 附近商品检索：Redis GEO 半径查询（按距离升序）
+     * @param x      中心经度
+     * @param y      中心纬度
+     * @param radius 半径（公里）
+     * @param area   校区（可空，空则全校区）
+     */
+    public Result queryNearbyGoods(Double x, Double y, Double radius, String area) {
+        if (x == null || y == null || radius == null) {
+            return Result.fail("缺少定位参数");
+        }
+        String key = geoKey(area);
+        GeoOperations<String, String> geo = stringRedisTemplate.opsForGeo();
+        Circle circle = new Circle(new Point(x, y), new Distance(radius, RedisGeoCommands.DistanceUnit.KILOMETERS));
+
+        List<Goods> result = new ArrayList<>();
+        try {
+            RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs
+                    .newGeoRadiusArgs().includeDistance().sortAscending();
+            GeoResults<RedisGeoCommands.GeoLocation<String>> results =
+                    geo.geoRadius(key, circle, args);
+            log.info("[GEO] 查询 key={}, 命中={}", key, results == null ? 0 : results.getContent().size());
+            if (results != null && results.getContent() != null) {
+                for (GeoResult<RedisGeoCommands.GeoLocation<String>> geoResult : results.getContent()) {
+                    String goodsId = geoResult.getContent().getName();
+                    Goods goods = getById(Long.valueOf(goodsId));
+                    if (goods != null && goods.getStatus() == 1) {
+                        double dist = geoResult.getDistance() == null ? 0 : geoResult.getDistance().getValue();
+                        goods.setDistance(dist); // 距离（公里）
+                        fillSellerInfo(goods);
+                        result.add(goods);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[GEO] 附近检索异常: {}", e.getMessage());
+        }
+        return Result.ok(result);
+    }
+
+    private String geoKey(String area) {
+        return RedisConstants.GOODS_GEO_KEY + (StrUtil.isBlank(area) ? "all" : area);
+    }
+
+    private void addGoodsGeo(Goods goods) {
+        try {
+            stringRedisTemplate.opsForGeo().add(
+                    geoKey(goods.getArea()),
+                    new Point(goods.getX(), goods.getY()),
+                    goods.getId().toString());
+        } catch (Exception e) {
+            log.warn("[GEO] 写入坐标失败: goodsId={}, err={}", goods.getId(), e.getMessage());
+        }
+    }
+
+    private void removeGoodsGeo(Goods goods) {
+        try {
+            stringRedisTemplate.opsForGeo().remove(geoKey(goods.getArea()), goods.getId().toString());
+        } catch (Exception e) {
+            log.warn("[GEO] 移除坐标失败: goodsId={}, err={}", goods.getId(), e.getMessage());
+        }
+    }
+
+    // ==================== 缓存：逻辑过期 + 延迟双删 ====================
+
+    /**
+     * 逻辑过期查询：缓存未过期直接返回；过期则抢 Redisson 锁异步重建，先返回旧数据。
+     * 适合读多写少的商品详情热点，相比互斥锁方案不会阻塞读请求。
+     */
+    private Goods queryWithLogicalExpire(Long id) {
+        String key = RedisConstants.CACHE_GOODS_KEY + id;
+        String json = stringRedisTemplate.opsForValue().get(key);
+        if (StrUtil.isBlank(json)) {
+            // 缓存未命中（如重启后未预热）：走 DB 并重建缓存
+            return rebuildFromDb(id, key);
+        }
+        JSONObject obj = JSONUtil.parseObj(json);
+        LocalDateTime expireTime = LocalDateTime.parse(obj.getStr("expireTime"));
+        Goods goods = obj.getJSONObject("data").toBean(Goods.class);
+
+        if (expireTime.isAfter(LocalDateTime.now())) {
+            return goods; // 未过期
+        }
+
+        // 过期：尝试抢锁重建（只允许一个线程查 DB，其余返回旧数据）
+        RLock lock = redissonClient.getLock(RedisConstants.LOCK_GOODS_KEY + id);
+        boolean locked = false;
+        try {
+            locked = lock.tryLock(0, RedisConstants.LOCK_SHOP_TTL, TimeUnit.SECONDS);
+            if (locked) {
+                // 双检：可能已被其他线程重建
+                String json2 = stringRedisTemplate.opsForValue().get(key);
+                if (StrUtil.isNotBlank(json2)) {
+                    JSONObject obj2 = JSONUtil.parseObj(json2);
+                    if (LocalDateTime.parse(obj2.getStr("expireTime")).isAfter(LocalDateTime.now())) {
+                        return obj2.getJSONObject("data").toBean(Goods.class);
+                    }
+                }
+                Long goodsId = id;
+                CompletableFuture.runAsync(() -> {
+                    Goods fresh = getById(goodsId);
+                    if (fresh != null) {
+                        saveGoodsWithLogicalExpire(key, fresh);
+                        log.info("[Cache] 逻辑过期异步重建: goodsId={}", goodsId);
+                    }
+                });
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (locked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+        return goods; // 重建期间返回旧数据（过期但可用）
+    }
+
+    /** 缓存未命中兜底：查 DB、写逻辑过期缓存 */
+    private Goods rebuildFromDb(Long id, String key) {
+        Goods goods = getById(id);
+        if (goods != null) {
+            saveGoodsWithLogicalExpire(key, goods);
+        }
+        return goods;
+    }
+
+    /** 写入逻辑过期缓存：{expireTime, data} */
+    private void saveGoodsWithLogicalExpire(String key, Goods goods) {
+        JSONObject obj = new JSONObject();
+        obj.set("expireTime", LocalDateTime.now().plusSeconds(RedisConstants.CACHE_SHOP_TTL * 60));
+        obj.set("data", JSONUtil.parseObj(JSONUtil.toJsonStr(goods)));
+        stringRedisTemplate.opsForValue().set(key, obj.toString());
+    }
+
+    /**
+     * 延迟双删：先删缓存，异步 500ms 后再删一次，
+     * 覆盖"请求 A 在更新期间把旧数据写回缓存"的窗口，保证最终一致。
+     */
+    private void deleteCacheWithDelay(Long goodsId) {
+        String key = RedisConstants.CACHE_GOODS_KEY + goodsId;
+        stringRedisTemplate.delete(key);
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            stringRedisTemplate.delete(key);
+            log.debug("[Cache] 延迟双删完成: goodsId={}", goodsId);
+        });
     }
 
     /**
@@ -230,48 +416,5 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         if (goods.getSellerName() == null) goods.setSellerName("校园同学");
         if (goods.getSellerIcon() == null) goods.setSellerIcon("/imgs/icons/default-icon.svg");
-    }
-
-    /**
-     * 缓存击穿防护 - 互斥锁
-     */
-    private Goods queryWithMutex(Long id) {
-        String key = RedisConstants.CACHE_GOODS_KEY + id;
-
-        String goodsJson = stringRedisTemplate.opsForValue().get(key);
-        if (StrUtil.isNotBlank(goodsJson)) {
-            return JSONUtil.toBean(goodsJson, Goods.class);
-        }
-
-        if (goodsJson != null) {
-            return null;
-        }
-
-        String lockKey = RedisConstants.LOCK_GOODS_KEY + id;
-        Goods goods = null;
-        // Redisson 分布式锁（替代手写 SETNX）：可重入、自动续期、原子解锁
-        RLock lock = redissonClient.getLock(lockKey);
-        boolean locked = false;
-        try {
-            locked = lock.tryLock(0, RedisConstants.LOCK_SHOP_TTL, TimeUnit.SECONDS);
-            if (!locked) {
-                Thread.sleep(50);
-                return queryWithMutex(id);
-            }
-            goods = getById(id);
-            Thread.sleep(200);
-            if (goods == null) {
-                stringRedisTemplate.opsForValue().set(key, "", RedisConstants.CACHE_NULL_TTL, TimeUnit.MINUTES);
-                return null;
-            }
-            stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(goods), RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (locked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
-        return goods;
     }
 }

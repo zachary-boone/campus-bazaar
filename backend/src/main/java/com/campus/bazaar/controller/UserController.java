@@ -93,9 +93,9 @@ public class UserController {
         return userService.updateNickName(nickName);
     }
 
-    /** 修改密码 - 必须登录 */
+    /** 修改密码 - 必须登录（首次设置密码时 oldPassword 可不传） */
     @PutMapping("/password")
-    public Result updatePassword(@RequestParam("oldPassword") String oldPassword,
+    public Result updatePassword(@RequestParam(value = "oldPassword", required = false) String oldPassword,
                                  @RequestParam("newPassword") String newPassword) {
         return userService.updatePassword(oldPassword, newPassword);
     }
