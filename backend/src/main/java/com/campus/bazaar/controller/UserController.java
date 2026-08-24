@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.controller;
+package com.campus.bazaar.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.campus.bazaar.dto.LoginFormDTO;
@@ -29,8 +29,10 @@ public class UserController {
     @Resource
     private IUserInfoService userInfoService;
 
-    /** 发送手机验证码 - 无需登录 */
+    /** 发送手机验证码 - 无需登录（令牌桶限流 + ZSet 两级频率限制） */
     @PostMapping("/code")
+    @com.campus.bazaar.utils.RateLimit(key = "code", rate = 2, capacity = 5,
+            message = "验证码发送过于频繁，请稍后再试")
     public Result sendCode(@RequestParam("phone") String phone) {
         return userService.sendCode(phone);
     }

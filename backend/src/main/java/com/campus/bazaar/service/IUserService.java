@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.service;
+package com.campus.bazaar.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.campus.bazaar.dto.LoginFormDTO;

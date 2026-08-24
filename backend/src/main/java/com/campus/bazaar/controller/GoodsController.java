@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.controller;
+package com.campus.bazaar.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -85,8 +85,8 @@ public class GoodsController {
             @RequestParam("typeId") Integer typeId,
             @RequestParam(value = "current", defaultValue = "1") Integer current) {
         Page<Goods> page = goodsService.query()
-                .eq(typeId != null && typeId > 0, \"type_id\", typeId)
-                .eq(\"status\", 1)
+                .eq(typeId != null && typeId > 0, "type_id", typeId)
+                .eq("status", 1)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         return Result.ok(page.getRecords());
     }
@@ -99,8 +99,8 @@ public class GoodsController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "current", defaultValue = "1") Integer current) {
         Page<Goods> page = goodsService.query()
-                .like(StrUtil.isNotBlank(name), \"name\", name)
-                .eq(\"status\", 1)
+                .like(StrUtil.isNotBlank(name), "name", name)
+                .eq("status", 1)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         return Result.ok(page.getRecords());
     }

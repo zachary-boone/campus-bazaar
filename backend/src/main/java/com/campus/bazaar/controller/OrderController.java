@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.controller;
+package com.campus.bazaar.controller;
 
 import com.campus.bazaar.dto.OrderDTO;
 import com.campus.bazaar.dto.Result;
@@ -13,7 +13,7 @@ import javax.validation.Valid;
 
 @Validated
 @RestController
-@RequestMapping(\"/order\")
+@RequestMapping("/order")
 public class OrderController {
 
     @Resource
@@ -34,33 +34,33 @@ public class OrderController {
      * @param orderNo 订单号
      * @param payType 支付方式: 1-余额 2-支付宝 3-微信
      */
-    @PostMapping(\"/pay/{orderNo}\")
-    public Result mockPay(@PathVariable(\"orderNo\") String orderNo,
-                          @RequestParam(value = \"payType\", defaultValue = \"1\") Integer payType) {
+    @PostMapping("/pay/{orderNo}")
+    public Result mockPay(@PathVariable("orderNo") String orderNo,
+                          @RequestParam(value = "payType", defaultValue = "1") Integer payType) {
         return orderService.mockPay(orderNo, payType);
     }
 
     /**
      * 取消订单
      */
-    @PutMapping(\"/cancel/{orderNo}\")
-    public Result cancelOrder(@PathVariable(\"orderNo\") String orderNo) {
+    @PutMapping("/cancel/{orderNo}")
+    public Result cancelOrder(@PathVariable("orderNo") String orderNo) {
         return orderService.cancelOrder(orderNo);
     }
 
     /**
      * 确认收货
      */
-    @PutMapping(\"/confirm/{orderNo}\")
-    public Result confirmOrder(@PathVariable(\"orderNo\") String orderNo) {
+    @PutMapping("/confirm/{orderNo}")
+    public Result confirmOrder(@PathVariable("orderNo") String orderNo) {
         return orderService.confirmOrder(orderNo);
     }
 
     /**
      * 查询订单详情
      */
-    @GetMapping(\"/{orderNo}\")
-    public Result queryOrder(@PathVariable(\"orderNo\") String orderNo) {
+    @GetMapping("/{orderNo}")
+    public Result queryOrder(@PathVariable("orderNo") String orderNo) {
         return orderService.queryOrder(orderNo);
     }
 
@@ -69,10 +69,10 @@ public class OrderController {
      * @param status 订单状态(可选): 1-待支付 2-已支付 3-已完成 4-已取消
      * @param current 页码
      */
-    @GetMapping(\"/my\")
+    @GetMapping("/my/")
     public Result queryMyOrders(
-            @RequestParam(value = \"status\", required = false) Integer status,
-            @RequestParam(value = \"current\", defaultValue = \"1\") Integer current) {
+            @RequestParam(value = "status", required = false) Integer status,
+            @RequestParam(value = "current", defaultValue = "1") Integer current) {
         return orderService.queryMyOrders(status, current);
     }
 
@@ -81,10 +81,10 @@ public class OrderController {
      * @param status 订单状态(可选)
      * @param current 页码
      */
-    @GetMapping(\"/sell\")
+    @GetMapping("/sell/")
     public Result querySellOrders(
-            @RequestParam(value = \"status\", required = false) Integer status,
-            @RequestParam(value = \"current\", defaultValue = \"1\") Integer current) {
+            @RequestParam(value = "status", required = false) Integer status,
+            @RequestParam(value = "current", defaultValue = "1") Integer current) {
         return orderService.querySellOrders(status, current);
     }
 }

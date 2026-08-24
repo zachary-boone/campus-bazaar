@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.service;
+package com.campus.bazaar.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.campus.bazaar.dto.Result;
@@ -33,7 +33,6 @@ public interface IOrderService extends IService<Order> {
      * @param orderNo 订单号
      * @return 操作结果
      */
-    @SuppressWarnings(\"unused\")
     Result confirmOrder(String orderNo);
 
     /**
@@ -42,6 +41,16 @@ public interface IOrderService extends IService<Order> {
      * @return 订单详情
      */
     Result queryOrder(String orderNo);
+
+    /**
+     * 查询订单（无登录校验，供 MQ 消费者/内部调用）
+     */
+    Order queryOrderInternal(String orderNo);
+
+    /**
+     * 超时关单（无登录校验，供支付轮询消费者调用）
+     */
+    void timeoutCancelOrder(String orderNo);
 
     /**
      * 查询我的订单(买家)

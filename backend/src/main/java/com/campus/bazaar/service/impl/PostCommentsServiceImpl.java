@@ -1,6 +1,7 @@
-﻿package com.campus.bazaar.service.impl;
+package com.campus.bazaar.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.campus.bazaar.dto.Result;
@@ -56,7 +57,7 @@ public class PostCommentsServiceImpl extends ServiceImpl<PostCommentsMapper, Pos
         save(postComments);
 
         // 4. 更新帖子评论数
-        postMapper.update(null, new QueryWrapper<Post>()
+        postMapper.update(null, new UpdateWrapper<Post>()
                 .eq("id", postComments.getPostId())
                 .setSql("comments = comments + 1"));
 
@@ -108,7 +109,7 @@ public class PostCommentsServiceImpl extends ServiceImpl<PostCommentsMapper, Pos
         updateById(comment);
 
         // 5. 更新帖子评论数
-        postMapper.update(null, new QueryWrapper<Post>()
+        postMapper.update(null, new UpdateWrapper<Post>()
                 .eq("id", comment.getPostId())
                 .setSql("comments = comments - 1"));
 
@@ -118,7 +119,7 @@ public class PostCommentsServiceImpl extends ServiceImpl<PostCommentsMapper, Pos
     @Override
     public Result likeComment(Long commentId) {
         // 1. 更新评论点赞数
-        update(null, new QueryWrapper<PostComments>()
+        update(null, new UpdateWrapper<PostComments>()
                 .eq("id", commentId)
                 .setSql("liked = liked + 1"));
         return Result.ok();

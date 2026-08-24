@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.service;
+package com.campus.bazaar.service;
 
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.PostComments;

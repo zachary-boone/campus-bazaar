@@ -15,8 +15,20 @@ public class RedisConstants {
     public static final Long LOCK_SHOP_TTL = 10L;
 
     public static final String SECKILL_STOCK_KEY = "seckill:stock:";
+    public static final String SECKILL_USER_KEY = "seckill:user:";
     public static final String POST_LIKED_KEY = "post:liked:";
     public static final String FEED_KEY = "feed:";
     public static final String GOODS_GEO_KEY = "goods:geo:";
     public static final String USER_SIGN_KEY = "sign:";
+
+    /** 验证码发送频率限制（ZSet 滑动窗口，member=时间戳） */
+    public static final String CODE_LIMIT_MIN_KEY = "login:code:limit:min:";
+    public static final String CODE_LIMIT_HOUR_KEY = "login:code:limit:hour:";
+    public static final long CODE_LIMIT_MIN_TTL = 60L;       // 一级窗口：60 秒
+    public static final long CODE_LIMIT_HOUR_TTL = 3600L;    // 二级窗口：1 小时
+    public static final int CODE_LIMIT_MIN_COUNT = 3;        // 60s 内最多 3 次
+    public static final int CODE_LIMIT_HOUR_COUNT = 10;      // 1h 内最多 10 次
+
+    /** 支付状态轮询（RabbitMQ 延迟队列） */
+    public static final String PAY_RETRY_KEY = "pay:retry:"; // 订单支付轮询重试级别（备用落点）
 }

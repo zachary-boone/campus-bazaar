@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.config;
+package com.campus.bazaar.config;
 
 import com.campus.bazaar.dto.Result;
 import lombok.extern.slf4j.Slf4j;

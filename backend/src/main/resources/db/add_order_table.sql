@@ -1,4 +1,4 @@
-﻿-- 订单表
+-- 订单表
 CREATE TABLE IF NOT EXISTS 	b_order (
   id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
   order_no       VARCHAR(32)  NOT NULL                COMMENT '订单号',

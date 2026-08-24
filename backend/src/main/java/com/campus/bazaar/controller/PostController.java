@@ -44,11 +44,22 @@ public class PostController {
     }
 
     @PutMapping("/like/{id}")
-    public Result likeBlog(@PathVariable("id") Long id) {
-        // 修改点赞数量
-        postService.update()
-                .setSql("liked = liked + 1").eq("id", id).update();
-        return Result.ok();
+    @com.campus.bazaar.utils.RateLimit(key = "post-like", rate = 20, capacity = 50)
+    public Result likePost(@PathVariable("id") Long id) {
+        // ZSet 点赞/取消
+        return postService.likePost(id);
+    }
+
+    @GetMapping("/likes/{id}")
+    public Result queryPostLikes(@PathVariable("id") Long id,
+                                 @RequestParam(value = "top", defaultValue = "5") Integer top) {
+        // ZSet 点赞排行 TopN
+        return Result.ok(postService.queryPostLikes(id, top));
+    }
+
+    @GetMapping("/like/status/{id}")
+    public Result isLiked(@PathVariable("id") Long id) {
+        return Result.ok(postService.isLiked(id));
     }
 
     @GetMapping("/of/me")

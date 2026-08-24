@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.service.impl;
+package com.campus.bazaar.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -45,19 +45,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (phone == null || phone.length() != 11 || !phone.startsWith("1")) {
             return Result.fail("请输入正确的 11 位手机号");
         }
-        // 2. 生成 6 位验证码
+        // 2. 两级频率限制（ZSet 滑动窗口）：
+        //    一级：60s 内最多 3 次（分钟级防刷）
+        //    二级：1h 内最多 10 次（小时级风控）
+        boolean minPass = checkCodeLimit(RedisConstants.CODE_LIMIT_MIN_KEY + phone,
+                RedisConstants.CODE_LIMIT_MIN_TTL, RedisConstants.CODE_LIMIT_MIN_COUNT);
+        if (!minPass) {
+            return Result.fail("发送太频繁，请 1 分钟后再试");
+        }
+        boolean hourPass = checkCodeLimit(RedisConstants.CODE_LIMIT_HOUR_KEY + phone,
+                RedisConstants.CODE_LIMIT_HOUR_TTL, RedisConstants.CODE_LIMIT_HOUR_COUNT);
+        if (!hourPass) {
+            return Result.fail("今日发送次数过多，请稍后再试");
+        }
+
+        // 3. 生成 6 位验证码
         String code = RandomUtil.randomNumbers(6);
-        // 3. 存入 Redis, 2 分钟过期
+        // 4. 存入 Redis, 2 分钟过期
         stringRedisTemplate.opsForValue().set(
                 RedisConstants.LOGIN_CODE_KEY + phone,
                 code,
                 RedisConstants.LOGIN_CODE_TTL,
                 TimeUnit.MINUTES
         );
-        // 4. 打印日志
+        // 5. 打印日志
         log.info("📱 [校园小黑市] 手机号 {} 的验证码: {}", phone, code);
 
-        // 5. 演示模式
+        // 6. 演示模式
         Map<String, Object> data = new HashMap<>();
         data.put("phone", phone);
         data.put("code", code);
@@ -65,6 +79,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         data.put("expireMinutes", RedisConstants.LOGIN_CODE_TTL);
         data.put("tip", "demo：演示模式把验证码直接返回。生产环境接短信通道，data 为空。");
         return Result.ok(data);
+    }
+
+    /**
+     * ZSet 滑动窗口频率限制（原子 Lua）：
+     * 清理窗口外记录 → 统计窗口内次数 → 未超限则记录本次并返回 true
+     */
+    private static final String CODE_LIMIT_LUA =
+            "redis.call('zremrangebyscore', KEYS[1], 0, ARGV[1] - tonumber(ARGV[2]) * 1000) " +
+            "local count = redis.call('zcard', KEYS[1]) " +
+            "if count >= tonumber(ARGV[3]) then return 0 end " +
+            "redis.call('zadd', KEYS[1], ARGV[1], ARGV[1] .. ':' .. math.random(1000000)) " +
+            "redis.call('expire', KEYS[1], tonumber(ARGV[2]) + 5) " +
+            "return 1";
+
+    private boolean checkCodeLimit(String key, long windowSec, int maxCount) {
+        org.springframework.data.redis.core.script.DefaultRedisScript<Long> script =
+                new org.springframework.data.redis.core.script.DefaultRedisScript<>(CODE_LIMIT_LUA, Long.class);
+        Long result = stringRedisTemplate.execute(script, java.util.Collections.singletonList(key),
+                String.valueOf(System.currentTimeMillis()), String.valueOf(windowSec), String.valueOf(maxCount));
+        return result != null && result == 1L;
     }
 
     @Override

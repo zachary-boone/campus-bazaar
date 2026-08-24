@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.service.impl;
+package com.campus.bazaar.service.impl;
 
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.Sign;

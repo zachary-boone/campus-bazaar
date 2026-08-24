@@ -27,9 +27,9 @@ public class SeckillCoupon implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 关联的优惠券的id
+     * 关联的优惠券的id（实际表主键列名为 coupon_id，关联 tb_coupon.id）
      */
-    @TableId(value = "voucher_id", type = IdType.INPUT)
+    @TableId(value = "coupon_id", type = IdType.INPUT)
     private Long couponId;
 
     /**

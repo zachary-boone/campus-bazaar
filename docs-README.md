@@ -99,10 +99,14 @@ java -jar target\campus-bazaar-0.0.1-SNAPSHOT.jar --server.port=8081
 
 ## 技术亮点
 
-- Token + Redis 单拦截器认证 + ThreadLocal 用户透传（黑马双拦截器思路在本项目按单拦截器落地，可后续扩展）
-- Redis 预扣库存 + 互斥锁 / 逻辑过期缓存，秒杀防超卖
-- ZSet 点赞排行、Set 关注关系、BitMap 签到
-- 验证码频率限制（Redis 计数 + 2 分钟过期）
+- **双拦截器认证**：RefreshTokenInterceptor（全路径解析 token + 无感续期 + ThreadLocal 透传）+ LoginInterceptor（白名单外校验登录态），token 有效期 10 小时，活跃访问自动续期
+- **Redisson 分布式锁**：替换手写 SETNX，用于商品缓存防击穿与秒杀场景（锁用户/券维度），解决事务锁失效
+- **秒杀高并发链路**：Redis Lua 预扣库存（原子防超卖 + 一人一单）→ RabbitMQ 异步下单削峰 → 消费者 Redisson 锁 + 事务落库，失败自动补偿库存
+- **令牌桶限流**：Redis Lua 分布式令牌桶（@RateLimit 注解），秒杀/验证码/点赞接口级限流保护
+- **ZSet 点赞排行**：点赞/取消/是否点赞/点赞用户 TopN（ZSet + 时间戳排序）
+- **验证码两级限流**：ZSet 滑动窗口，一级 60s 内 3 次 + 二级 1h 内 10 次
+- **支付状态轮询**：RabbitMQ 延迟队列（TTL 5s/10s/20s/40s/80s 五级）+ 指数退避，未支付逐级重试、超时关单
+- Set 关注关系（含共同关注）、BitMap 签到（连续天数统计）
 - 登录注册全链路：验证码下发、自动注册、token 10 小时有效、interface 白名单
 
-> 二期规划：Redisson 分布式锁、RabbitMQ 异步下单、令牌桶限流、支付延迟队列（详见 `docs-改造方案.md`）
+> 说明：Redisson / RabbitMQ 需本机安装对应服务（Redis 6379 已有；RabbitMQ 5672 需启动后秒杀异步下单与支付轮询才可完整运行）。

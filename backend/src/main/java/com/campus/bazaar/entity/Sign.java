@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.entity;
+package com.campus.bazaar.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

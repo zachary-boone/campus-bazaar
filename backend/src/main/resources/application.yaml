@@ -11,7 +11,6 @@ spring:
   redis:
     host: 127.0.0.1
     port: 6379
-    password: ""
     lettuce:
       pool:
         max-active: 10
@@ -20,6 +19,20 @@ spring:
         time-between-eviction-runs: 10s
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2
+          max-interval: 10000
 mybatis-plus:
   type-aliases-package: com.campus.bazaar.entity # 别名扫描包
 logging:

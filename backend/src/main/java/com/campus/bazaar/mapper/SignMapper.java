@@ -1,4 +1,4 @@
-﻿package com.campus.bazaar.mapper;
+package com.campus.bazaar.mapper;
 
 import com.campus.bazaar.entity.Sign;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;

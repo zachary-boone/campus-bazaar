@@ -7,11 +7,14 @@ import com.campus.bazaar.mapper.CouponMapper;
 import com.campus.bazaar.entity.SeckillCoupon;
 import com.campus.bazaar.service.ISeckillCouponService;
 import com.campus.bazaar.service.ICouponService;
+import com.campus.bazaar.utils.RedisConstants;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -26,6 +29,9 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
 
     @Resource
     private ISeckillCouponService seckillCouponService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result queryCouponOfGoods(Long goodsId) {
@@ -47,5 +53,10 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         seckillVoucher.setBeginTime(coupon.getBeginTime());
         seckillVoucher.setEndTime(coupon.getEndTime());
         seckillCouponService.save(seckillVoucher);
+        // Redis 库存预热（秒杀时先预扣 Redis，再异步落库）
+        stringRedisTemplate.opsForValue().set(
+                RedisConstants.SECKILL_STOCK_KEY + coupon.getId(),
+                String.valueOf(coupon.getStock()),
+                7, TimeUnit.DAYS);
     }
 }
