@@ -42,20 +42,26 @@ E:\project\campus-bazaar\
 
 ### 方式一：一键脚本（推荐）
 
-双击 `E:\project\campus-bazaar\start.bat`，依次启动 Redis → nginx → 后端。
-停止时双击 `stop.bat`。
+双击 `E:\project\campus-bazaar\start.bat`，依次启动 **RabbitMQ → Redis → nginx → 后端**（等待 RabbitMQ 5672 就绪后启动后端）。
+停止时双击 `stop.bat`（后端 → nginx → Redis → RabbitMQ 优雅停止）。
 
 ### 方式二：手动启动
 
 ```bash
-# 1. Redis（E:\redis-zb\redis-win-x64）
-redis-server.exe redis.windows.conf
+# 1. RabbitMQ（E:\tools\rabbitmq_server-3.13.7，依赖 E:\tools\erl-26.2.5）
+set ERLANG_HOME=E:\tools\erl-26.2.5
+set RABBITMQ_BASE=E:\tools\rabbitmq_server-3.13.7\data
+set PATH=E:\tools\erl-26.2.5\bin;%PATH%
+cd E:\tools\rabbitmq_server-3.13.7\sbin && rabbitmq-server.bat
 
-# 2. nginx（E:\project\nginx-1.18.0\nginx-1.18.0）
+# 2. Redis（E:\redis-zb\redis-win-x64）
+redis-server.exe redis.windows.conf --stop-writes-on-bgsave-error no
+
+# 3. nginx（E:\project\nginx-1.18.0\nginx-1.18.0）
 nginx.exe -p E:\project\nginx-1.18.0\nginx-1.18.0\ -c conf\nginx.conf
 
-# 3. 后端（E:\project\campus-bazaar\backend）
-java -jar target\campus-bazaar-0.0.1-SNAPSHOT.jar --server.port=8081
+# 4. 后端（E:\project\campus-bazaar\backend）
+java -jar target\campus-bazaar.jar --server.port=8081
 ```
 
 ### 访问地址
@@ -64,6 +70,7 @@ java -jar target\campus-bazaar-0.0.1-SNAPSHOT.jar --server.port=8081
 |---|---|
 | http://127.0.0.1:8080 | 前端页面（校园小黑市） |
 | http://127.0.0.1:8081 | 后端 API |
+| http://127.0.0.1:15672 | RabbitMQ 管理台（guest/guest） |
 
 > 注意：nginx 所在路径不能包含中文，否则无法启动。
 
