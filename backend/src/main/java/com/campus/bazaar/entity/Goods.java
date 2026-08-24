@@ -15,9 +15,6 @@ import java.time.LocalDateTime;
  * <p>
  * 校园小黑市商品
  * </p>
- *
- * @author 校园小黑市
- * @since 2026-08-22
  */
 @Data
 @EqualsAndHashCode(callSuper = false)

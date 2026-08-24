@@ -23,4 +23,7 @@ public class SeckillMessage implements Serializable {
 
     /** 下单用户 id */
     private Long userId;
+
+    /** 消息唯一 ID（消费幂等用，生产者生成 UUID） */
+    private String msgId;
 }

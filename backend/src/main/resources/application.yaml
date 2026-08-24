@@ -1,5 +1,12 @@
 server:
   port: 8081
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50
+    accept-count: 500
+    max-connections: 2000
+    connection-timeout: 10s
 spring:
   application:
     name: campus-bazaar
@@ -13,9 +20,9 @@ spring:
     port: 6379
     lettuce:
       pool:
-        max-active: 10
-        max-idle: 10
-        min-idle: 1
+        max-active: 60
+        max-idle: 60
+        min-idle: 10
         time-between-eviction-runs: 10s
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
@@ -24,17 +31,27 @@ spring:
     port: 5672
     username: guest
     password: guest
+    # 发布确认（生产者可靠性）：消息到达交换机后回调
+    publisher-confirm-type: correlated
+    # 消息路由失败回调（配合 mandatory）
+    publisher-returns: true
     listener:
       simple:
-        acknowledge-mode: auto
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 1000
-          multiplier: 2
-          max-interval: 10000
+        # 手动确认：消费成功才 ack，失败 nack 重新入队
+        acknowledge-mode: manual
+        default-requeue-rejected: true
 mybatis-plus:
   type-aliases-package: com.campus.bazaar.entity # 别名扫描包
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: always
 logging:
   level:
     com.campus.bazaar: debug
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] [%X{traceId:-}] %logger{36} - %msg%n"

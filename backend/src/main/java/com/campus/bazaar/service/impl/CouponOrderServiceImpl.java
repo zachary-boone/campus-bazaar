@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.CouponOrder;
+import com.campus.bazaar.entity.MqIdempotent;
 import com.campus.bazaar.entity.SeckillCoupon;
 import com.campus.bazaar.mapper.CouponOrderMapper;
+import com.campus.bazaar.mapper.MqIdempotentMapper;
 import com.campus.bazaar.mapper.SeckillCouponMapper;
 import com.campus.bazaar.mq.SeckillMessage;
 import com.campus.bazaar.service.ICouponOrderService;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -36,6 +39,9 @@ public class CouponOrderServiceImpl extends ServiceImpl<CouponOrderMapper, Coupo
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private MqIdempotentMapper mqIdempotentMapper;
 
     @Resource
     private RedissonClient redissonClient;
@@ -60,6 +66,9 @@ public class CouponOrderServiceImpl extends ServiceImpl<CouponOrderMapper, Coupo
     @Override
     public Result seckillCoupon(Long couponId) {
         Long userId = UserHolder.getUserId();
+        if (com.campus.bazaar.metrics.BizMetrics.seckillRequests != null) {
+            com.campus.bazaar.metrics.BizMetrics.seckillRequests.increment();
+        }
 
         // 1. 校验秒杀时间
         SeckillCoupon seckillCoupon = seckillCouponMapper.selectById(couponId);
@@ -100,7 +109,7 @@ public class CouponOrderServiceImpl extends ServiceImpl<CouponOrderMapper, Coupo
             }
 
             // 5. 发送 MQ 异步下单，立即返回（削峰：数据库只承受"实际下单量"的写压力）
-            SeckillMessage message = new SeckillMessage(couponId, userId);
+            SeckillMessage message = new SeckillMessage(couponId, userId, UUID.randomUUID().toString().replace("-", ""));
             try {
                 rabbitTemplate.convertAndSend(MqConstants.SECKILL_EXCHANGE, MqConstants.SECKILL_ROUTING_KEY, message);
             } catch (Exception e) {
@@ -110,6 +119,9 @@ public class CouponOrderServiceImpl extends ServiceImpl<CouponOrderMapper, Coupo
                 return Result.fail("系统繁忙，请稍后再试");
             }
             log.info("[Seckill] 预扣成功，异步下单受理: couponId={}, userId={}", couponId, userId);
+            if (com.campus.bazaar.metrics.BizMetrics.seckillSuccess != null) {
+                com.campus.bazaar.metrics.BizMetrics.seckillSuccess.increment();
+            }
             return Result.ok(0L); // 0 表示已受理，订单由消费者异步创建
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -130,6 +142,13 @@ public class CouponOrderServiceImpl extends ServiceImpl<CouponOrderMapper, Coupo
     public void createSeckillOrder(SeckillMessage message) {
         Long couponId = message.getCouponId();
         Long userId = message.getUserId();
+
+        // 0. 消息幂等：唯一键抢占，已处理过的消息直接跳过（防止 MQ 重复投递导致重复下单）
+        int idem = mqIdempotentMapper.insertIgnore(message.getMsgId(), "seckill_order");
+        if (idem == 0) {
+            log.info("[Seckill] 重复消息，幂等跳过: msgId={}", message.getMsgId());
+            return;
+        }
 
         // 1. DB 层一人一单二次校验（Redis 可能被清，DB 是最终真相）
         Integer count = query().eq("user_id", userId).eq("coupon_id", couponId).count();

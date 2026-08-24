@@ -1,7 +1,10 @@
 package com.campus.bazaar.config;
 
 import com.campus.bazaar.utils.MqConstants;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +25,7 @@ import org.springframework.context.annotation.Configuration;
  *   pay.delay.2.queue (TTL 10s) ─┼─(死信)─▶ pay.check.exchange ──▶ pay.check.queue
  *   ...                         ─┘
  */
+@Slf4j
 @Configuration
 public class RabbitMQConfig {
 
@@ -32,6 +36,28 @@ public class RabbitMQConfig {
     @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();
+    }
+
+    /**
+     * 自定义 RabbitTemplate：发布确认 + 路由失败回调（生产者可靠性）
+     * - 发布确认：消息投递到交换机后回调，失败可记录/补偿（发布不丢失）
+     * - mandatory + ReturnsCallback：路由不到队列时回调（投递不丢失）
+     */
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(messageConverter);
+        template.setMandatory(true);
+        template.setConfirmCallback((correlationData, ack, cause) -> {
+            if (!ack) {
+                log.error("[MQ] 消息发布未确认: id={}, cause={}（可做补偿）",
+                        correlationData == null ? "null" : correlationData.getId(), cause);
+            }
+        });
+        template.setReturnCallback((message, replyCode, replyText, exchange, routingKey) -> {
+            log.error("[MQ] 消息路由失败: exchange={}, routingKey={}, replyText={}", exchange, routingKey, replyText);
+        });
+        return template;
     }
 
     /** ========== 秒杀异步下单 ========== */

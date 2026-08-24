@@ -30,6 +30,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Resource
     private RateLimitInterceptor rateLimitInterceptor;
 
+    @Resource
+    private IdempotentInterceptor idempotentInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 0. 限流拦截器（优先级最高：先挡流量）
@@ -58,6 +61,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/v2/api-docs/**"
                 )
                 .order(2);
+
+        // 3. 接口防重复提交（需要登录态，放在登录校验之后）
+        registry.addInterceptor(idempotentInterceptor)
+                .addPathPatterns("/**")
+                .order(3);
     }
 
     @Override

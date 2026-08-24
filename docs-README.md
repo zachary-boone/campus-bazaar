@@ -110,7 +110,20 @@ java -jar target\campus-bazaar-0.0.1-SNAPSHOT.jar --server.port=8081
 - **GEO 附近商品**：发布/更新商品写入 Redis GEO 坐标，`/goods/of/nearby` 半径检索按距离排序，支撑"宿舍级附近交易"
 - **缓存一致性**：逻辑过期 + Redisson 锁异步重建（读多写少热点），更新链路延迟双删保证最终一致；防穿透（空值）/防击穿（逻辑过期）/防雪崩（随机 TTL 思路）
 - **BCrypt 密码加密**：替换裸 MD5（自带随机盐抗彩虹表），支持首次设置密码
+- **库存对账任务**：定时以 DB 为基准校准 Redis 预扣库存（缺失初始化/负值修正/超扣回收），兜底最终一致性
+- **MQ 消费幂等**：tb_mq_idempotent 幂等表（msg_id 唯一键），防止重复投递导致重复下单
+- **接口防重复提交**：@Idempotent 注解 + Redis SETNX 防抖，下单/支付接口防连点
+- **可观测**：Actuator 健康/指标端点 + Micrometer 自定义指标（秒杀请求/成功、限流拒绝、防重拒绝）+ TraceId 日志链路
+- **MQ 可靠性**：发布确认（ConfirmCallback）+ 路由失败回调（mandatory）+ 消费者手动 ack / 失败重新入队
 - Set 关注关系（含共同关注）、BitMap 签到（连续天数统计）
 - 登录注册全链路：验证码下发、自动注册、token 10 小时有效、interface 白名单
 
-> 说明：Redisson / RabbitMQ 需本机安装对应服务（Redis 6379 已有；RabbitMQ 5672 需启动后秒杀异步下单与支付轮询才可完整运行）。
+## 压测数据（JMeter 5.6.3，本机单机：Windows + Redis + MySQL 同机）
+
+| 场景 | 并发 | 结果 |
+|---|---|---|
+| 秒杀接口（Redis 预扣 + 异步下单） | 300 | QPS 285/s，Avg 633ms，**0 超卖**（Redis=DB=499），**一人一单严格生效**（300 并发仅 1 单） |
+| 商品详情（缓存读） | 300 | 0 错误，Avg 2766ms（含 DB 卖家信息回填） |
+| 秒杀限流保护 | 1000 | 568 个请求被令牌桶 429 拦截，未打穿业务层 |
+
+> 说明：Redisson / RabbitMQ 需本机安装对应服务（Redis 6379 已有；RabbitMQ 已装于 E:\tools，5672 需启动后秒杀异步下单与支付轮询才可完整运行）。

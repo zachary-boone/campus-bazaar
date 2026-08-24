@@ -55,6 +55,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         boolean pass = redisTokenBucket.tryAcquire(key, rateLimit.rate(), rateLimit.capacity());
         if (!pass) {
             log.warn("[RateLimit] {} 触发限流（rate={}, capacity={}）", key, rateLimit.rate(), rateLimit.capacity());
+            if (com.campus.bazaar.metrics.BizMetrics.rateLimitRejected != null) {
+                com.campus.bazaar.metrics.BizMetrics.rateLimitRejected.increment();
+            }
             response.setStatus(429);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"success\":false,\"errorMsg\":\"" + rateLimit.message() + "\"}");

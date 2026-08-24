@@ -4,45 +4,27 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * <p>
- * 
- * </p>
+ * MQ 消费幂等表：以 msg_id 唯一键保证消息只被处理一次
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
-@Accessors(chain = true)
-@TableName("tb_follow")
-public class Follow implements Serializable {
+@TableName("tb_mq_idempotent")
+public class MqIdempotent implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 主键
-     */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    /**
-     * 用户id
-     */
-    private Long userId;
+    /** 消息唯一 ID（生产者生成 UUID） */
+    private String msgId;
 
-    /**
-     * 关联的用户id
-     */
-    private Long followUserId;
+    /** 业务类型：seckill_order / pay_check 等 */
+    private String businessType;
 
-    /**
-     * 创建时间
-     */
     private LocalDateTime createTime;
-
-
 }

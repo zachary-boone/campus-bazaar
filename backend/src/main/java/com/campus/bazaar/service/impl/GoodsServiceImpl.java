@@ -374,10 +374,11 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         return goods;
     }
 
-    /** 写入逻辑过期缓存：{expireTime, data} */
+    /** 写入逻辑过期缓存：{expireTime(ISO字符串), data} */
     private void saveGoodsWithLogicalExpire(String key, Goods goods) {
         JSONObject obj = new JSONObject();
-        obj.set("expireTime", LocalDateTime.now().plusSeconds(RedisConstants.CACHE_SHOP_TTL * 60));
+        // expireTime 存 ISO 字符串，保证读取时 LocalDateTime.parse 可解析
+        obj.set("expireTime", LocalDateTime.now().plusSeconds(RedisConstants.CACHE_SHOP_TTL * 60).toString());
         obj.set("data", JSONUtil.parseObj(JSONUtil.toJsonStr(goods)));
         stringRedisTemplate.opsForValue().set(key, obj.toString());
     }

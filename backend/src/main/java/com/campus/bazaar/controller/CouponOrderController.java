@@ -19,7 +19,7 @@ public class CouponOrderController {
      * @return 0 表示已受理，订单异步创建
      */
     @PostMapping("seckill/{id}")
-    @com.campus.bazaar.utils.RateLimit(key = "seckill", rate = 5, capacity = 10,
+    @com.campus.bazaar.utils.RateLimit(key = "seckill", rate = 20, capacity = 50,
             message = "秒杀请求过于频繁，请稍后再试")
     public Result seckillVoucher(@PathVariable("id") Long couponId) {
         return couponOrderService.seckillCoupon(couponId);
