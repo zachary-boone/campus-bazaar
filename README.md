@@ -1,22 +1,24 @@
 # 校园小黑市交易平台
 
-> 面向全校学生的二手物品交易平台，支持宿舍级定位发布、拼单包邮、每日签到领运费券，
-> 可关注学长学姐、查看实时在售与求购榜单。
+> 面向全校学生的二手物品交易平台：宿舍级定位发布（Redis GEO 附近检索）、关注学长学姐动态流
+> （ZSet 推模式 Feed）、秒杀优惠券（Redisson 锁 + Lua 预扣 + RabbitMQ 异步下单）、每日签到（BitMap）。
 
 ## 技术栈
 
-- **后端**：Spring Boot 2.3.12 / MyBatis-Plus 3.4.3 / MySQL 8 / Redis
-- **前端**：Vue 2 + Element UI（静态页，由 nginx 托管）
-- **中间件**：nginx（静态资源 + `/api` 反向代理）
+- **后端框架**：Spring Boot 2.3.12 / MyBatis-Plus 3.4.3 / JDK 8
+- **存储**：MySQL 8（索引优化、事务隔离、乐观锁）、Redis（缓存、ZSet 点赞/关注流、Set 关注关系、BitMap 签到、GEO 附近检索、Lua 原子脚本）
+- **中间件**：RabbitMQ 3.13（异步下单削峰、延迟队列、死信队列、发布确认、手动 ack）、Redisson 3.15（分布式锁）
+- **Web 基础设施**：nginx 1.18（前端静态资源托管 + `/api` 反向代理）
+- **前端**：Vue 2 + Element UI（静态页）
+- **工程化**：Actuator + Micrometer 指标、TraceId 日志链路、JMeter 压测
 
 ## 项目结构
 
 ```
 E:\project\campus-bazaar\
-├── start.bat                     # 一键启动脚本
+├── start.bat                     # 一键启动脚本（RabbitMQ/Redis/nginx/后端）
 ├── stop.bat                      # 一键停止脚本
-├── docs-README.md                # 本文档
-├── docs-改造方案.md               # 整体改造方案（保留备查）
+├── README.md                     # 项目文档（GitHub 主页渲染）
 ├── backend\                      # 后端工程（Spring Boot）
 │   ├── pom.xml                   # groupId: com.campus.bazaar
 │   ├── .idea\
@@ -29,7 +31,7 @@ E:\project\campus-bazaar\
 │       │   ├── entity\           # Goods / Post / Coupon / User ...
 │       │   ├── dto\  utils\  config\
 │       │   └── resources\db\campus_bazaar.sql   # 建库脚本
-│       └── target\campus-bazaar-0.0.1-SNAPSHOT.jar
+│       └── target\campus-bazaar.jar
 └── nginx-1.18.0\                # 独立目录，托管前端
     └── nginx-1.18.0\
         ├── conf\nginx.conf       # 监听 8080，/api 代理到 8081
