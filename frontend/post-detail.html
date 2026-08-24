@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>帖子详情 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .pd-content {
+      height: calc(100% - 56px - 64px);
+      overflow-y: auto;
+    }
+
+    /* 顶部封面 (banner + 透明 bar) */
+    .pd-cover {
+      position: relative;
+      height: 240px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #07C160, #43C6AC);
+    }
+    .pd-cover img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .pd-cover__mask {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.5));
+    }
+    .pd-cover__bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: 12px 16px;
+      display: flex; align-items: center;
+      color: white;
+    }
+    .pd-cover__back {
+      width: 32px; height: 32px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px);
+      cursor: pointer;
+    }
+
+    /* 正文卡 */
+    .pd-body {
+      background: white;
+      border-radius: 20px 20px 0 0;
+      margin-top: -24px;
+      padding: 18px 16px 8px;
+      position: relative;
+      z-index: 2;
+    }
+    .pd-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .pd-subtitle {
+      display: flex; align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px; color: var(--text-3);
+    }
+    .pd-subtitle .chip { margin: 0; font-weight: 500; }
+    .pd-subtitle .post-type-buy { background:#FFF3E0; color:#E65100; }
+    .pd-subtitle .post-type-sell { background:#E3F2FD; color:#1565C0; }
+    .pd-subtitle .post-type-share { background:#E8F8EF; color:#06AE56; }
+    .pd-subtitle .post-type-groupon { background:#FFE8E5; color:#C62828; }
+
+    /* 楼主信息 */
+    .pd-author {
+      display: flex; align-items: center;
+      gap: 10px;
+      padding: 16px 0;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .pd-author__avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #E0F2F1;
+      flex-shrink: 0;
+    }
+    .pd-author__info { flex: 1; min-width: 0; }
+    .pd-author__name {
+      font-size: 14px; font-weight: 600;
+      display: flex; align-items: center;
+      gap: 6px;
+    }
+    .pd-author__verified {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 1px 6px; border-radius: 6px;
+      font-size: 10px;
+    }
+    .pd-author__meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .btn-follow {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: none; border-radius: 16px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-follow.is-following {
+      background: #ECEFF1;
+      color: var(--text-3);
+    }
+
+    /* 正文 */
+    .pd-text {
+      padding: 16px 0;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-1);
+    }
+    .pd-text img { max-width: 100%; border-radius: 8px; margin: 6px 0; }
+
+    /* 关联商品 */
+    .pd-goods {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex; gap: 12px;
+      margin: 12px 0;
+      border: 1px dashed var(--border);
+    }
+    .pd-goods__img {
+      width: 80px; height: 80px;
+      border-radius: 10px;
+      object-fit: cover; background: #F0F0F0;
+    }
+    .pd-goods__info { flex: 1; min-width: 0; }
+    .pd-goods__title {
+      font-size: 13px; font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .pd-goods__price { color: var(--accent); font-size: 16px; font-weight: 700; margin-top: 4px; }
+    .pd-goods__price small { font-size: 11px; }
+    .pd-goods__loc { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+    /* 互动数据 */
+    .pd-stats {
+      display: flex; gap: 16px;
+      padding: 16px 0 12px;
+      border-top: 1px solid #F0F0F0;
+      border-bottom: 1px solid #F0F0F0;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .pd-stats div { display: flex; align-items: center; gap: 4px; }
+    .pd-stats i { color: var(--accent); }
+
+    /* 点赞列表 */
+    .pd-likers {
+      padding: 14px 0;
+      border-bottom: 8px solid var(--bg);
+    }
+    .pd-likers__title {
+      font-size: 13px; font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-2);
+    }
+    .pd-likers__list {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .pd-likers__list img {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #E0F2F1;
+      border: 2px solid white;
+    }
+
+    /* 评论区 */
+    .pd-comments {
+      padding: 12px 0;
+    }
+    .pd-comments__title {
+      font-size: 14px; font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .pd-comment {
+      display: flex; gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid #F5F5F5;
+    }
+    .pd-comment__avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #E0F2F1;
+      flex-shrink: 0;
+    }
+    .pd-comment__body { flex: 1; min-width: 0; }
+    .pd-comment__head {
+      display: flex; align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .pd-comment__name { font-weight: 600; color: var(--text-1); }
+    .pd-comment__time { color: var(--text-3); margin-left: auto; }
+    .pd-comment__text {
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+    .pd-comment__reply {
+      margin-top: 6px; padding: 8px 10px;
+      background: #F5F7FA; border-radius: 8px;
+      font-size: 12px; color: var(--text-2);
+    }
+
+    /* 底部 bar */
+    .pd-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: white;
+      display: flex; align-items: center;
+      padding: 10px 12px;
+      gap: 10px;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+      z-index: 10;
+    }
+    .pd-bar input {
+      flex: 1;
+      border: none;
+      background: var(--bg);
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 13px;
+      outline: none;
+    }
+    .pd-bar .icons {
+      display: flex; gap: 14px;
+      padding: 0 6px;
+    }
+    .pd-bar .icons > div {
+      font-size: 11px;
+      color: var(--text-2);
+      text-align: center;
+      cursor: pointer;
+    }
+    .pd-bar .icons i { font-size: 18px; display: block; margin-bottom: 2px; }
+    .pd-bar .icons .active { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="pd-cover">
+    <img :src="cover" @error="onImgErr">
+    <div class="pd-cover__mask"></div>
+    <div class="pd-cover__bar">
+      <div class="pd-cover__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+      <div style="flex:1; text-align:center; font-weight:600; padding-right: 32px">帖子详情</div>
+    </div>
+  </div>
+
+  <div class="pd-content">
+
+    <div class="pd-body">
+      <div class="pd-title">{{post.title}}</div>
+      <div class="pd-subtitle">
+        <span class="chip" :class="postTypeClass">{{postTypeLabel}}</span>
+        <span v-if="post.location"><i class="el-icon-location-information"></i> {{post.location}}</span>
+        <span style="margin-left:auto">{{formatTime(post.createTime)}}</span>
+      </div>
+
+      <div class="pd-author" @click="toAuthor">
+        <img class="pd-author__avatar" :src="post.icon" @error="onImgErr">
+        <div class="pd-author__info">
+          <div class="pd-author__name">
+            {{post.name || '校园同学'}}
+            <span class="pd-author__verified">学长认证</span>
+          </div>
+          <div class="pd-author__meta">📍 {{post.location}} · 发布于 {{formatTime(post.createTime)}}</div>
+        </div>
+        <button class="btn-follow" :class="{'is-following': followed}" @click="toggleFollow">
+          {{followed ? '已关注' : '+ 关注'}}
+        </button>
+      </div>
+
+      <div class="pd-text" v-html="post.content"></div>
+
+      <div class="pd-goods" v-if="shop" @click="toShop">
+        <img class="pd-goods__img" :src="shop.images || '/imgs/goods/0.svg'" @error="onImgErr">
+        <div class="pd-goods__info">
+          <div class="pd-goods__title">{{shop.name}}</div>
+          <div class="pd-goods__price"><small>¥</small> {{shop.price}}</div>
+          <div class="pd-goods__loc"><i class="el-icon-location-information"></i> {{shop.area || '紫荆宿舍楼'}}</div>
+        </div>
+        <div style="display:flex; align-items:center; color: var(--primary); font-size:12px; font-weight:600">
+          查看 ›
+        </div>
+      </div>
+
+      <div class="pd-stats">
+        <div><i>♥</i> {{post.liked || 0}} 想要</div>
+        <div><i>⭐</i> {{post.comments || 0}} 评论</div>
+        <div><i>🔗</i> 分享</div>
+      </div>
+    </div>
+
+    <!-- 点赞列表 -->
+    <div style="background:white; padding: 0 16px">
+      <div class="pd-likers">
+        <div class="pd-likers__title">❤️ {{post.liked || 0}} 人想要 · 包括</div>
+        <div class="pd-likers__list">
+          <img v-for="u in likers" :key="u.id" :src="u.icon" @error="onImgErr">
+          <div style="display:inline-flex; align-items:center; gap:6px; color:var(--text-3); font-size:11px; margin-left:6px">
+            等 {{post.liked || 0}} 位同学
+          </div>
+        </div>
+      </div>
+
+      <!-- 评论区 -->
+      <div class="pd-comments">
+        <div class="pd-comments__title">💬 同学留言 ({{comments.length}})</div>
+        <div class="pd-comment" v-for="c in comments" :key="c.id">
+          <img class="pd-comment__avatar" :src="c.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+          <div class="pd-comment__body">
+            <div class="pd-comment__head">
+              <span class="pd-comment__name">{{c.name}}</span>
+              <span v-if="c.tag" class="chip" style="font-size:10px; padding:1px 6px">{{c.tag}}</span>
+              <span class="pd-comment__time">{{c.time}}</span>
+            </div>
+            <div class="pd-comment__text">{{c.text}}</div>
+            <div v-if="c.reply" class="pd-comment__reply">
+              <span style="color: var(--primary); font-weight: 600">楼主:</span> {{c.reply}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pd-bar">
+    <input v-model="msgText" placeholder="友善评论，文明沟通...">
+    <button @click="sendMsg" style="background: var(--primary); color:white; border:none; border-radius:20px; padding: 8px 14px; font-size:13px; font-weight:600">发送</button>
+    <div class="icons">
+      <div @click="toggleLike">
+        <i :style="{color: liked ? '#FF6B6B' : ''}">♥</i>
+        <span style="color:var(--text-3)">{{liked ? '已想要' : '想要'}}</span>
+      </div>
+      <div @click="toggleStar">
+        <i :style="{color: starred ? '#FFA726' : ''}">★</i>
+        <span style="color:var(--text-3)">{{starred ? '已收藏' : '收藏'}}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      post: {},
+      shop: null,
+      likers: [],
+      comments: [],
+      msgText: '',
+      liked: false,
+      starred: false,
+      followed: false
+    },
+    computed: {
+      cover() {
+        const imgs = (this.post.images || '/imgs/post-dorm.svg').split(',');
+        return imgs[0] || '/imgs/post-dorm.svg';
+      },
+      postTypeClass() {
+        return {
+          1: 'post-type-sell',
+          2: 'post-type-buy',
+          3: 'post-type-groupon',
+          4: 'post-type-share'
+        }[this.post.postType] || 'post-type-share';
+      },
+      postTypeLabel() {
+        return {
+          1: '🛒 出物',
+          2: '🙋 求购',
+          3: '🎁 拼单',
+          4: '📢 校园分享'
+        }[this.post.postType] || '📌 帖子';
+      }
+    },
+    created() {
+      const id = this.util.getUrlParam('id');
+      this.queryPost(id);
+    },
+    methods: {
+      goBack() { history.back(); },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      formatTime(t) {
+        if (!t) return '';
+        const d = new Date(t);
+        const now = new Date();
+        const diff = (now - d) / 1000;
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+        if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+        if (diff < 86400 * 7) return Math.floor(diff / 86400) + '天前';
+        return d.getMonth() + 1 + '月' + d.getDate() + '日';
+      },
+      queryPost(id) {
+        axios.get('/post/' + id).then(({data}) => {
+          this.post = data || {};
+          if (!this.post.icon) this.post.icon = '/imgs/icons/default-icon.svg';
+          this.likers = this.seedLikers(this.post.liked || 0);
+          this.comments = this.seedComments();
+          // 关联商品
+          if (this.post.goodsId) {
+            axios.get('/goods/' + this.post.goodsId).then(({data}) => {
+              data.images = (data.images || '').split(',')[0];
+              this.shop = data;
+            });
+          }
+        });
+      },
+      seedLikers(n) {
+        const names = ['小萌新','可可','桃桃','阿宅','大四学长','大三学姐','米白','小绿','路过同学'];
+        const out = [];
+        for (let i = 0; i < Math.min(n, 8); i++) {
+          out.push({ id: i, icon: '/imgs/icons/default-icon.svg', name: names[i % names.length] });
+        }
+        return out;
+      },
+      seedComments() {
+        return [
+          { id: 1, name: '小萌新', tag: '学妹', time: '10分钟前', text: '还在吗？价格可以小刀吗？' },
+          { id: 2, name: '大三学姐', tag: '学姐', time: '1小时前', text: '请问能送到3号楼下面吗？', reply: '可以的，下午5点以后随时' },
+          { id: 3, name: '阿宅', time: '2小时前', text: '真不错，同求' },
+          { id: 4, name: '路过同学', time: '昨天', text: '已收藏，先观望一下' }
+        ];
+      },
+      sendMsg() {
+        if (!this.msgText.trim()) return;
+        this.comments.unshift({
+          id: this.comments.length + 100,
+          name: '我',
+          time: '刚刚',
+          text: this.msgText.trim(),
+          icon: '/imgs/icons/default-icon.svg'
+        });
+        this.msgText = '';
+        this.$message.success('已发送');
+      },
+      toggleLike() {
+        this.liked = !this.liked;
+        this.post.liked = (this.post.liked || 0) + (this.liked ? 1 : -1);
+        if (!this.liked && this.post.liked < 0) this.post.liked = 0;
+        this.$message.success(this.liked ? '❤️ 已加入想要' : '已取消');
+      },
+      toggleStar() { this.starred = !this.starred; this.$message.success(this.starred ? '⭐ 已收藏' : '已取消收藏'); },
+      toggleFollow() {
+        this.followed = !this.followed;
+        this.$message.success(this.followed ? '已关注 TA' : '已取消关注');
+      },
+      toAuthor() { location.href = '/other-info.html?id=' + this.post.userId; },
+      toShop() { if (this.shop) location.href = '/shop-detail.html?id=' + this.shop.id; }
+    }
+  });
+</script>
+</body>
+</html>

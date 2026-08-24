@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>登录 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(180deg, #07C160 0%, #43C6AC 35%, #F5F7FA 60%);
+      min-height: 100vh;
+    }
+    .login-shell {
+      min-height: 100vh;
+      padding: 0 28px;
+      display: flex;
+      flex-direction: column;
+    }
+    .login-hero {
+      padding: 30px 0 30px;
+      color: white;
+      text-align: center;
+    }
+    .login-hero__logo {
+      width: 72px; height: 72px;
+      border-radius: 22px;
+      background: white;
+      margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .login-hero__title { font-size: 24px; font-weight: 800; letter-spacing: 2px; }
+    .login-hero__slogan { font-size: 13px; opacity: .9; margin-top: 4px; letter-spacing: 1px; }
+
+    .login-card {
+      background: white;
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      margin-top: 10px;
+    }
+    .login-card__title {
+      font-size: 18px; font-weight: 700;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .login-card__sub {
+      text-align: center;
+      color: var(--text-3);
+      font-size: 12px;
+      margin-bottom: 24px;
+    }
+    .login-tab {
+      display: flex;
+      background: #F5F7FA;
+      border-radius: 22px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .login-tab__item {
+      flex: 1; text-align: center;
+      padding: 8px 0;
+      border-radius: 18px;
+      font-size: 13px;
+      color: var(--text-2);
+      cursor: pointer;
+    }
+    .login-tab__item.active {
+      background: white;
+      color: var(--primary);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .form-field {
+      display: flex; align-items: center;
+      border-bottom: 2px solid #E5E7EB;
+      padding: 12px 4px;
+      margin-bottom: 20px;
+    }
+    .form-field__icon {
+      width: 28px; font-size: 18px;
+      color: var(--text-3);
+    }
+    .form-field input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      background: transparent;
+    }
+    .form-field__action {
+      color: var(--primary);
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .form-field__action:disabled { color: var(--text-3); }
+
+    .login-submit {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #07C160 0%, #43C6AC 100%);
+      color: white;
+      border: none;
+      border-radius: 26px;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(7,193,96,0.3);
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .login-submit:active { transform: scale(.98); }
+
+    .login-fineprint {
+      display: flex; align-items: center;
+      margin: 20px 0 8px;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .login-fineprint input { margin-right: 8px; }
+    .login-fineprint a { color: var(--primary); text-decoration: none; }
+
+    .login-quick {
+      margin-top: 20px;
+      display: flex; justify-content: space-around;
+      padding: 0 30px;
+    }
+    .login-quick__cell {
+      text-align: center;
+      cursor: pointer;
+    }
+    .login-quick__icon {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      margin: 0 auto 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .login-quick__label {
+      font-size: 11px; color: var(--text-2);
+    }
+
+    .login-tip {
+      background: var(--primary-light);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--primary-dark);
+      font-size: 12px;
+      display: flex; align-items: center;
+      margin-top: 16px;
+    }
+    .login-tip i { margin-right: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="login-shell">
+    <div class="login-hero">
+      <div class="login-hero__logo">🏪</div>
+      <div class="login-hero__title">校园小黑市</div>
+      <div class="login-hero__slogan">同校好物 · 拼单包邮</div>
+    </div>
+
+    <div class="login-card">
+      <div class="login-card__title">欢迎回来 👋</div>
+      <div class="login-card__sub">登录你的校园账号</div>
+
+      <div class="login-tab">
+        <div class="login-tab__item active" @click="switchTab('code')">验证码登录</div>
+        <div class="login-tab__item" @click="switchTab('pwd')">密码登录</div>
+      </div>
+
+      <div v-if="tab==='code'">
+        <div class="form-field">
+          <div class="form-field__icon"><i class="el-icon-mobile-phone"></i></div>
+          <input v-model="form.phone" placeholder="请输入校园手机号" maxlength="11">
+        </div>
+        <div class="form-field">
+          <div class="form-field__icon"><i class="el-icon-key"></i></div>
+          <input v-model="form.code" placeholder="验证码" maxlength="6">
+          <span class="form-field__action" :disabled="disabled" @click="sendCode">{{codeBtnMsg}}</span>
+        </div>
+      </div>
+
+      <div v-else>
+        <div class="form-field">
+          <div class="form-field__icon"><i class="el-icon-mobile-phone"></i></div>
+          <input v-model="form.phone" placeholder="校园手机号" maxlength="11">
+        </div>
+        <div class="form-field">
+          <div class="form-field__icon"><i class="el-icon-lock"></i></div>
+          <input v-model="form.password" type="password" placeholder="登录密码">
+        </div>
+      </div>
+
+      <button class="login-submit" @click="login">登录 / 注册</button>
+
+      <label class="login-fineprint">
+        <input type="checkbox" v-model="radio">
+        <span>我已阅读并同意</span>
+        <a href="javascript:void(0)" @click="showAgreement">《校园小黑市用户协议》</a>
+        <span>、</span>
+        <a href="javascript:void(0)">《隐私政策》</a>
+      </label>
+
+      <div class="login-tip">
+        <i class="el-icon-info"></i>
+        <span>未注册的手机号验证后将自动创建校园账号</span>
+      </div>
+    </div>
+
+    <div class="login-quick">
+      <div class="login-quick__cell">
+        <div class="login-quick__icon" style="color:#09BB07">💬</div>
+        <div class="login-quick__label">校园卡</div>
+      </div>
+      <div class="login-quick__cell">
+        <div class="login-quick__icon" style="color:#5B8FF9">📘</div>
+        <div class="login-quick__label">教务登录</div>
+      </div>
+      <div class="login-quick__cell">
+        <div class="login-quick__icon" style="color:#FF6B6B">📱</div>
+        <div class="login-quick__label">短信登录</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: "#app",
+    data: {
+      tab: 'code',
+      radio: true,
+      disabled: false,
+      codeBtnMsg: '发送验证码',
+      form: {}
+    },
+    methods: {
+      switchTab(t) { this.tab = t; },
+      showAgreement() { alert('校园小黑市用户服务协议（示例占位）'); },
+sendCode() {
+        if (!this.form.phone || this.form.phone.length !== 11) {
+          this.$message.error('请输入11位手机号');
+          return;
+        }
+        axios.post("/user/code?phone=" + this.form.phone)
+          .then(({data}) => {
+            // 演示模式从响应直接拿验证码，同时支持 开发固定码 888888 兜底
+            if (data && data.code) {
+              this.form.code = data.code;
+              this.$alert('📱 演示模式验证码: ' + data.code +
+                (data.devCode ? '\n（或直接输：' + data.devCode + '）' : '') +
+                '\n有效期 ' + data.expireMinutes + ' 分钟', '已发送', { confirmButtonText: '我填好了' });
+            } else {
+              this.$message.success('验证码已发送，请查收');
+            }
+          })
+          .catch(err => this.$message.error('发送失败：' + (err && err.toString && err.toString())));
+        this.disabled = true;
+        let i = 60;
+        const ti = setInterval(() => {
+          this.codeBtnMsg = (i--) + '秒后可重发';
+          if (i <= 0) {
+            clearInterval(ti);
+            this.disabled = false;
+            this.codeBtnMsg = '发送验证码';
+          }
+        }, 1000);
+      },
+      login() {
+        if (!this.radio) { this.$message.error('请先确认阅读用户协议'); return; }
+        if (!this.form.phone) { this.$message.error('请输入手机号'); return; }
+        if (this.tab === 'code' && !this.form.code) {
+          this.$message.error('请输入验证码（演示码 888888 永远有效）');
+          return;
+        }
+        axios.post("/user/login", this.form)
+          .then(({data}) => {
+            if (data) {
+              sessionStorage.setItem('token', data);
+              this.$message.success('🎉 登录成功');
+              setTimeout(() => location.href = '/index.html', 600);
+            }
+          })
+          .catch(err => {
+            const msg = err && err.errorMsg ? err.errorMsg : ((err && err.toString && err.toString()) || '登录失败');
+            this.$message.error(msg);
+          });
+      }
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>商品详情 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .detail-scroll {
+      height: calc(100% - 56px - 56px);
+      overflow-y: auto;
+    }
+
+    /* 大图 carousel */
+    .hero-img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #ECEFF1;
+      object-fit: cover;
+      display: block;
+    }
+    .hero-dots {
+      position: absolute;
+      bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.4);
+      color: white; font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+
+    /* 顶部商品信息 */
+    .goods-head {
+      background: white;
+      padding: 16px 16px 14px;
+    }
+    .goods-head__price {
+      display: flex; align-items: baseline;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 26px;
+    }
+    .goods-head__price small { font-size: 14px; margin-right: 2px; }
+    .goods-head__price-old {
+      color: var(--text-3);
+      text-decoration: line-through;
+      font-size: 13px;
+      margin-left: 10px;
+      font-weight: normal;
+    }
+    .goods-head__title {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-top: 8px;
+    }
+    .goods-head__meta {
+      display: flex; gap: 8px; align-items: center;
+      margin-top: 10px; font-size: 12px; color: var(--text-3);
+    }
+    .goods-head__meta .chip { margin: 0; }
+
+    /* 拼单 banner */
+    .groupon-bar {
+      background: linear-gradient(135deg, #FFF3E0 0%, #FFE082 100%);
+      margin: 10px 0 0;
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: flex; align-items: center;
+      margin: 10px 16px 0;
+    }
+    .groupon-bar__icon { font-size: 24px; margin-right: 10px; }
+    .groupon-bar__text { flex: 1; }
+    .groupon-bar__text h4 { margin: 0; font-size: 14px; color: #E65100; font-weight: 700; }
+    .groupon-bar__text p { margin: 2px 0 0; font-size: 11px; color: #BF360C; }
+    .groupon-bar .btn-go {
+      background: #FF6F00;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+    }
+
+    /* 卖家卡片 */
+    .seller-card {
+      background: white;
+      margin-top: 10px;
+      padding: 14px 16px;
+      display: flex; align-items: center;
+      gap: 12px;
+    }
+    .seller-card__avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #E0F2F1;
+      flex-shrink: 0;
+    }
+    .seller-card__info { flex: 1; min-width: 0; }
+    .seller-card__name {
+      font-size: 15px; font-weight: 600;
+      display: flex; align-items: center;
+    }
+    .seller-card__name .verified {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 1px 6px; border-radius: 6px;
+      font-size: 10px;
+      margin-left: 6px;
+      font-weight: 600;
+    }
+    .seller-card__loc {
+      font-size: 12px; color: var(--text-2);
+      margin-top: 4px;
+      display: flex; align-items: center;
+    }
+    .seller-card__loc i { color: var(--primary); margin-right: 3px; }
+    .btn-follow {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 16px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-follow.is-following {
+      background: #ECEFF1;
+      color: var(--text-3);
+    }
+
+    /* 通用 section */
+    .section {
+      background: white;
+      margin-top: 10px;
+      padding: 14px 16px;
+    }
+    .section__title {
+      font-size: 15px; font-weight: 700;
+      margin-bottom: 10px;
+      display: flex; align-items: center;
+    }
+    .section__title .badge {
+      background: var(--accent); color: white;
+      padding: 1px 6px; border-radius: 6px;
+      font-size: 10px; margin-left: 8px;
+    }
+
+    /* 属性表 */
+    .prop-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
+      font-size: 13px;
+    }
+    .prop-list label { color: var(--text-3); }
+    .prop-list span { color: var(--text-1); margin-left: 6px; }
+
+    /* 运费券卡片 */
+    .coupon-row {
+      display: flex;
+      background: linear-gradient(135deg, #FF8A65 0%, #FF6B6B 100%);
+      color: white;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .coupon-row::before, .coupon-row::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      background: var(--bg);
+      border-radius: 50%;
+      top: 50%; transform: translateY(-50%);
+    }
+    .coupon-row::before { left: 90px; }
+    .coupon-row::after { right: 90px; }
+    .coupon-row__price {
+      font-size: 26px; font-weight: 800;
+      padding: 0 6px;
+      border-right: 1px dashed rgba(255,255,255,0.5);
+    }
+    .coupon-row__price small { font-size: 13px; }
+    .coupon-row__body { flex: 1; padding: 0 14px; }
+    .coupon-row__title { font-size: 14px; font-weight: 700; }
+    .coupon-row__sub { font-size: 11px; opacity: 0.9; margin-top: 2px; }
+    .coupon-row__btn {
+      background: white;
+      color: #FF6B6B;
+      padding: 6px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+    }
+
+    /* 留言区 */
+    .msg-input {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .msg-input input {
+      flex: 1;
+      border: none;
+      background: var(--bg);
+      border-radius: 18px;
+      padding: 10px 14px;
+      font-size: 13px;
+      outline: none;
+    }
+    .msg-input button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 18px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .msg-list { margin-top: 12px; }
+    .msg-item {
+      display: flex; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .msg-item__avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #E0F2F1; flex-shrink: 0;
+    }
+    .msg-item__body { flex: 1; }
+    .msg-item__head {
+      display: flex; gap: 6px; align-items: center;
+      font-size: 12px;
+    }
+    .msg-item__name { color: var(--text-2); }
+    .msg-item__text {
+      font-size: 13px; margin-top: 4px;
+      line-height: 1.5;
+    }
+    .msg-item__time { font-size: 11px; color: var(--text-3); }
+
+    /* 底部 action bar */
+    .action-bar {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      background: white;
+      display: flex; align-items: center;
+      padding: 8px 12px;
+      gap: 10px;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+      z-index: 10;
+    }
+    .action-bar__icons {
+      display: flex; gap: 18px;
+      padding: 0 4px;
+    }
+    .action-bar__icons .icon-cell {
+      text-align: center; font-size: 11px;
+      color: var(--text-2);
+    }
+    .action-bar__icons .icon-cell i {
+      display: block; font-size: 20px;
+      margin-bottom: 2px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 24px;
+      color: white;
+    }
+    .action-btn--like { background: linear-gradient(135deg, #FFB74D, #FF8A65); }
+    .action-btn--buy { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">商品详情</div>
+    <div class="app-bar__action"><i class="el-icon-share"></i></div>
+  </div>
+
+  <div class="detail-scroll">
+
+    <!-- 大图 + 指示 -->
+    <div style="position:relative">
+      <img class="hero-img" :src="goods.img || '/imgs/goods/0.svg'" @error="onImgErr">
+      <div class="hero-dots">1 / 1</div>
+    </div>
+
+    <!-- 价格信息 -->
+    <div class="goods-head">
+      <div style="display:flex; align-items:baseline;">
+        <div class="goods-head__price"><small>¥</small>{{goods.price}}</div>
+        <div class="goods-head__price-old">原价 ¥ {{goods.price * 2.5 | toFixed}}</div>
+      </div>
+      <div class="goods-head__title">{{goods.name}}</div>
+      <div class="goods-head__meta">
+        <span class="chip">{{goods.area}}</span>
+        <span class="chip chip--info">可面交</span>
+        <span class="chip chip--accent">运费券可抵</span>
+        <span style="margin-left:auto">{{goods.comments || 0}}人想买</span>
+      </div>
+    </div>
+
+    <!-- 拼单 banner -->
+    <div class="groupon-bar">
+      <div class="groupon-bar__icon">🎁</div>
+      <div class="groupon-bar__text">
+        <h4>同班拼一拼，包邮到家</h4>
+        <p>已 {{grouponCount}} 人参与 · 差 {{3 - grouponCount}} 人成团</p>
+      </div>
+      <button class="btn-go">去拼单</button>
+    </div>
+
+    <!-- 卖家卡片 -->
+    <div class="seller-card">
+      <img class="seller-card__avatar" :src="seller.icon || '/imgs/icons/default-icon.svg'">
+      <div class="seller-card__info">
+        <div class="seller-card__name">
+          {{seller.name}}
+          <span class="verified">学长认证</span>
+        </div>
+        <div class="seller-card__loc">
+          <i class="el-icon-location-information"></i>{{goods.address || '紫荆宿舍楼 3号楼 519'}
+        </div>
+      </div>
+      <button class="btn-follow" :class="{'is-following': following}" @click="toggleFollow">
+        {{following ? '已关注' : '+ 关注'}}
+      </button>
+    </div>
+
+    <!-- 商品属性 -->
+    <div class="section">
+      <div class="section__title">📋 商品信息</div>
+      <div class="prop-list">
+        <div><label>成色</label><span>{{getQuality()}}</span></div>
+        <div><label>可交易时间</label><span>{{goods.tradeTime || '每天 18:00-22:00'}}</span></div>
+        <div><label>原价</label><span>¥ {{goods.price * 2.5 | toFixed}}</span></div>
+        <div><label>已发布</label><span>{{goods.sold || 3}} 天前</span></div>
+      </div>
+      <div style="margin-top:14px; font-size:13px; line-height:1.6; color:var(--text-1)" v-html="goods.content || defaultDesc"></div>
+    </div>
+
+    <!-- 运费券 -->
+    <div class="section">
+      <div class="section__title">🎁 限时拼单 <span class="badge">省钱</span></div>
+      <div v-for="v in vouchers" :key="v.id">
+        <div class="coupon-row">
+          <div class="coupon-row__price"><small>¥</small>{{getPay(v)}}</div>
+          <div class="coupon-row__body">
+            <div class="coupon-row__title">{{v.title}}</div>
+            <div class="coupon-row__sub">{{v.subTitle || '校区5公里内包邮'}}</div>
+          </div>
+          <button class="coupon-row__btn" @click="seckill(v)">立即领</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 同学校友留言 -->
+    <div class="section">
+      <div class="section__title">💬 同学留言 <span style="margin-left:auto; font-size:12px; color:var(--text-3); font-weight:normal">{{msgs.length}} 条</span></div>
+      <div class="msg-input">
+        <input v-model="msgText" placeholder="问问学长学姐，有议价空间吗？">
+        <button @click="sendMsg">发送</button>
+      </div>
+      <div class="msg-list">
+        <div class="msg-item" v-for="(m,i) in msgs" :key="i">
+          <img class="msg-item__avatar" :src="m.avatar || '/imgs/icons/default-icon.svg'">
+          <div class="msg-item__body">
+            <div class="msg-item__head">
+              <span class="msg-item__name">{{m.name}}</span>
+              <span class="chip" v-if="m.tag">{{m.tag}}</span>
+              <span class="msg-item__time" style="margin-left:auto">{{m.time}}</span>
+            </div>
+            <div class="msg-item__text">{{m.text}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 相似推荐 -->
+    <div class="section" v-if="similar.length">
+      <div class="section__title">🛒 同类相似</div>
+      <div class="feed-grid" style="padding:0">
+        <div class="goods-card" v-for="g in similar" :key="g.id" @click="toGoods(g.id)">
+          <img class="goods-card__img" :src="g.img" @error="onImgErr">
+          <div class="goods-card__body">
+            <div class="goods-card__title">{{g.name}}</div>
+            <div class="goods-card__price"><small>¥</small>{{g.price}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .feed-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .goods-card { background:#F5F7FA; border-radius:10px; overflow:hidden; }
+      .goods-card__img { width:100%; aspect-ratio: 1/1; object-fit:cover; }
+      .goods-card__body { padding: 8px; }
+      .goods-card__title { font-size:12px; line-height:1.3; height:32px; overflow:hidden;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+      .goods-card__price { color:#FF6B6B; font-weight:700; margin-top:2px; }
+      .goods-card__price small { font-size:11px; }
+    </style>
+
+  </div>
+
+  <div class="action-bar">
+    <div class="action-bar__icons">
+      <div class="icon-cell" @click="toggleLike">
+        <i :style="{color: liked ? '#FF6B6B' : ''}">♥</i>{{liked ? '已想要' : '想要'}}
+      </div>
+      <div class="icon-cell" @click="goMessage">
+        <i class="el-icon-chat-line-round"></i>留言
+      </div>
+    </div>
+    <button class="action-btn action-btn--like">收藏学长</button>
+    <button class="action-btn action-btn--buy" @click="contactSeller">联系卖家</button>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  Vue.filter('toFixed', v => v ? Number(v).toFixed(0) : '0');
+
+  const app = new Vue({
+    el: "#app",
+    data: {
+      util,
+      goods: {},
+      seller: {},
+      vouchers: [],
+      similar: [],
+      msgs: [],
+      msgText: '',
+      liked: false,
+      following: false,
+      grouponCount: 1
+    },
+    created() {
+      const id = util.getUrlParam("id");
+      this.queryGoods(id);
+      this.queryVouchers(id);
+      this.querySimilar(id);
+      this.seedMsgs();
+    },
+    methods: {
+      goBack() { history.back(); },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      getQuality() {
+        if (!this.goods.price) return '九成新';
+        return this.goods.price > 1000 ? '九成新' : this.goods.price > 100 ? '九成新' : '全新';
+      },
+      getPay(v) {
+        return v.payValue || (v.actualValue ? Math.floor(v.actualValue * 0.5) : 5);
+      },
+      queryGoods(id) {
+        axios.get("/goods/" + id)
+          .then(({data}) => {
+            this.goods = data;
+            this.goods.img = (data.images||'').split(',')[0] || '/imgs/goods/0.svg';
+            this.goods.content = '';
+            // 卖家用接口返回的真实信息
+            this.seller = {
+              name: data.sellerName || '校园同学',
+              icon: data.sellerIcon || '/imgs/icons/default-icon.svg'
+            };
+          });
+      },
+      queryVouchers(id) {
+        axios.get("/coupon/list/" + id)
+          .then(({data}) => {
+            this.vouchers = (data || []).map(v => ({
+              ...v,
+              title: v.title || '校园包邮券',
+              subTitle: v.subTitle || `满 ¥${v.actualValue || 19} 减 ¥${v.payValue || 5}`
+            }));
+            if (this.vouchers.length === 0) {
+              this.vouchers = [{
+                id: 'demo1',
+                payValue: 5,
+                actualValue: 19,
+                title: '校园包邮券',
+                subTitle: '满 ¥19 减 ¥5 · 全场可用'
+              }];
+            }
+          });
+      },
+      querySimilar(id) {
+        axios.get("/goods/of/type", { params: { typeId: 0, current: 1 }})
+          .then(({data}) => {
+            this.similar = (data||[]).filter(g => g.id != id).slice(0, 4)
+              .map(g => ({...g, img: (g.images||'').split(',')[0]}));
+          });
+      },
+      seedMsgs() {
+        this.msgs = [
+          { name: '小萌新', tag: '学妹', time: '10分钟前', text: '还在吗？价格还可以小刀吗？' },
+          { name: '大三学姐', tag: '学姐', time: '1小时前', text: '自提地点方便停车吗？' },
+          { name: '路过看看', time: '昨天', text: '请问有使用痕迹吗？' }
+        ];
+      },
+      sendMsg() {
+        if (!this.msgText.trim()) return;
+        this.msgs.unshift({
+          name: '我', time: '刚刚', text: this.msgText.trim(),
+          avatar: '/imgs/icons/default-icon.svg'
+        });
+        this.msgText = '';
+        this.$message.success('已发送');
+      },
+      toggleLike() { this.liked = !this.liked; this.$message.success(this.liked ? '已想要' : '已取消'); },
+      toggleFollow() {
+        this.following = !this.following;
+        this.$message.success(this.following ? '关注成功，学长上新会通知你' : '已取消关注');
+      },
+      goMessage() { this.$message.info('已为你在留言板定位到顶部'); },
+      contactSeller() { this.$message.success('📞 已申请交换联系方式（课程示例）'); },
+      seckill(v) {
+        const token = sessionStorage.getItem('token');
+        if (!token) { this.$message.error('请先登录'); setTimeout(()=> location.href='/login.html', 500); return; }
+        if (this.grouponCount >= 3) { this.$message.success('🎉 拼单已成功，自动发放运费券'); return; }
+        axios.post("/coupon-order/seckill/" + v.id)
+          .then(() => { this.grouponCount++; this.$message.success('✅ 你已加入拼单'); })
+          .catch(err => this.$message.error(err && err.toString && err.toString()));
+      },
+      toGoods(id) { location.href = "/shop-detail.html?id=" + id; }
+    }
+  });
+</script>
+</body>
+</html>

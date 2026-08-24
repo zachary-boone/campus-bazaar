@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 300" width="750" height="300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07C160"/>
+      <stop offset="100%" stop-color="#03A9F4"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="20%" cy="20%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.3)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+  <rect width="750" height="300" fill="url(#bg)"/>
+  <rect width="750" height="300" fill="url(#glow)"/>
+  <!-- 装饰 -->
+  <circle cx="650" cy="60" r="40" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="700" cy="220" r="50" fill="rgba(255,255,255,0.1)"/>
+  <!-- 校园 emoji -->
+  <text x="100" y="120" font-size="80">🎒</text>
+  <text x="200" y="180" font-size="70">📚</text>
+  <text x="320" y="120" font-size="80">💻</text>
+  <text x="430" y="180" font-size="60">🛒</text>
+  <!-- 文字 -->
+  <text x="50" y="230" font-size="42" font-weight="bold" fill="white" font-family="-apple-system,sans-serif">校园小黑市</text>
+  <text x="50" y="265" font-size="18" fill="rgba(255,255,255,0.85)" font-family="-apple-system,sans-serif">同校交易 · 拼单包邮 · 每日签到领运费券</text>
+</svg>

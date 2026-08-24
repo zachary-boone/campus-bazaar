@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#A5D6A7"/>
+  <text x="200" y="160" font-size="100" text-anchor="middle">📖</text>
+  <text x="200" y="240" font-size="28" text-anchor="middle" fill="rgba(0,0,0,0.6)" font-weight="bold" font-family="-apple-system,sans-serif">学习经验</text>
+</svg>

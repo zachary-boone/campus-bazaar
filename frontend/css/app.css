@@ -1,0 +1,190 @@
+/* ===== 校园小黑市 - 现代校园风全局样式 ===== */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --primary: #07C160;          /* 主色 - 校园绿 */
+  --primary-dark: #06AE56;
+  --primary-light: #E8F8EF;
+  --accent: #FF6B6B;           /* 点缀色 - 暖红 */
+  --info: #5B8FF9;             /* 信息蓝 */
+  --warn: #FFA726;
+  --text-1: #1F2937;
+  --text-2: #6B7280;
+  --text-3: #9CA3AF;
+  --bg: #F5F7FA;               /* 页面底色 */
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+html, body {
+  margin: 0; padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  color: var(--text-1);
+  background: var(--bg);
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+}
+#app { height: 100%; width: 100%; }
+
+/* ---- 顶部 Bar ---- */
+.app-bar {
+  position: relative;
+  background: linear-gradient(135deg, #07C160 0%, #06AE56 100%);
+  color: white;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  box-shadow: 0 2px 8px rgba(7,193,96,0.2);
+  z-index: 10;
+}
+.app-bar__back { font-size: 20px; padding: 8px; cursor: pointer; opacity: .9; }
+.app-bar__title { font-size: 17px; font-weight: 600; flex: 1; text-align: center; padding-right: 28px; }
+.app-bar__action { font-size: 18px; padding: 8px; cursor: pointer; opacity: .9; }
+
+/* ---- 通用搜索 ---- */
+.search-block {
+  background: linear-gradient(135deg, #07C160 0%, #06AE56 100%);
+  padding: 8px 16px 18px;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  box-shadow: 0 4px 16px rgba(7,193,96,0.15);
+}
+.search-block__row { display: flex; align-items: center; height: 32px; margin-top: 8px; }
+.city-chip {
+  background: rgba(255,255,255,0.2);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  margin-right: 10px;
+  display: flex; align-items: center;
+}
+.search-input {
+  flex: 1;
+  background: white;
+  border-radius: 18px;
+  display: flex; align-items: center;
+  padding: 0 14px;
+  height: 36px;
+  font-size: 14px;
+  color: var(--text-2);
+  box-shadow: var(--shadow-sm);
+}
+.search-input i { font-size: 14px; margin-right: 6px; color: var(--text-3); }
+
+/* ---- 卡片 ---- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 14px;
+}
+
+/* ---- 按钮 ---- */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 22px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(7,193,96,0.3);
+}
+.btn-primary:active { transform: scale(.97); }
+.btn-ghost {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: none;
+  border-radius: 16px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---- 标签 chip ---- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+.chip--accent { background: #FFE8E5; color: var(--accent); }
+.chip--info { background: #E3F2FD; color: var(--info); }
+.chip--warn { background: #FFF3E0; color: var(--warn); }
+
+/* ---- 顶部分类 Banner 圆角 ---- */
+.section-title {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 16px 10px;
+}
+.section-title h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.section-title .more {
+  font-size: 13px; color: var(--text-3); display:flex; align-items:center;
+}
+
+/* ---- 页脚 ---- */
+.foot {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 56px;
+  background: white;
+  display: flex;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.foot-box {
+  width: 20%;
+  text-align: center;
+  padding-top: 6px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.foot-box .foot-view { font-size: 22px; line-height: 22px; margin-bottom: 2px; }
+.foot-box.active { color: var(--primary); }
+.foot-add {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B6B, #FFA726);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  margin-top: -10px;
+  box-shadow: 0 4px 12px rgba(255,107,107,0.4);
+}
+
+/* ---- 滚动条美化 ---- */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ---- 动画 ---- */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in .4s ease-out; }
+
+/* ---- 数字徽章 ---- */
+.badge {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+}

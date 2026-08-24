@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>编辑资料 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .ie-content {
+      padding: 12px 16px 24px;
+    }
+
+    /* 头像卡 */
+    .ie-avatar-card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .ie-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+    .ie-avatar-info { flex: 1; }
+    .ie-avatar-info h3 { margin: 0 0 4px; font-size: 15px; }
+    .ie-avatar-info p { margin: 0; font-size: 12px; color: var(--text-3); }
+    .ie-avatar-btn {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 14px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* 表单卡 */
+    .ie-form {
+      background: white;
+      border-radius: 14px;
+      padding: 4px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .ie-form__row {
+      display: flex; align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .ie-form__row:last-child { border-bottom: none; }
+    .ie-form__label {
+      width: 80px;
+      font-size: 14px;
+      color: var(--text-2);
+    }
+    .ie-form__input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 14px;
+      text-align: right;
+      color: var(--text-1);
+    }
+    .ie-form__input::placeholder { color: var(--text-3); }
+    .ie-form__arrow { color: var(--text-3); font-size: 14px; margin-left: 4px; }
+    .ie-form__hint {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 4px;
+      padding: 0 0 12px;
+    }
+    .ie-form__chip-row {
+      display: flex; gap: 8px;
+      flex: 1; justify-content: flex-end;
+    }
+    .ie-form__chip-row .chip {
+      margin: 0;
+      cursor: pointer;
+    }
+    .ie-form__chip-row .chip.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* 简介特殊样式 */
+    .ie-form__row--top { align-items: flex-start; padding-top: 14px; }
+    .ie-form__row--top .ie-form__input {
+      text-align: left;
+      resize: none;
+      font-family: inherit;
+      height: 56px;
+    }
+
+    /* 底部按钮 */
+    .ie-actions {
+      padding: 16px;
+    }
+    .ie-btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      box-shadow: 0 4px 14px rgba(7,193,96,0.3);
+    }
+    .ie-btn--secondary {
+      background: white;
+      color: var(--text-2);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+      border: 1px solid #E5E7EB;
+      margin-top: 10px;
+    }
+
+    /* 退出区域 */
+    .ie-logout {
+      margin: 12px 16px 32px;
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      color: var(--accent);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">编辑资料</div>
+    <div class="app-bar__action" @click="saveDraft" style="font-size: 13px; padding: 8px 4px">草稿</div>
+  </div>
+
+  <div class="ie-content">
+
+    <!-- 头像 -->
+    <div class="ie-avatar-card">
+      <img class="ie-avatar" :src="form.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+      <div class="ie-avatar-info">
+        <h3>{{form.nickName || '设置昵称'}}</h3>
+        <p>📚 {{form.school || '校园小黑市'}} · ID: {{userId || '0001'}}</p>
+      </div>
+      <button class="ie-avatar-btn" @click="changeAvatar">更换</button>
+    </div>
+
+    <!-- 基本资料 -->
+    <div class="ie-form">
+      <div class="ie-form__row">
+        <div class="ie-form__label">昵称</div>
+        <input class="ie-form__input" v-model="form.nickName" placeholder="给自己起个名字" maxlength="20">
+      </div>
+      <div class="ie-form__row ie-form__row--top">
+        <div class="ie-form__label">个人介绍</div>
+        <textarea class="ie-form__input" v-model="form.introduce" placeholder="说说你是个什么样的人" maxlength="80"></textarea>
+      </div>
+      <div class="ie-form__hint">💡 好简介示例：大四出闲置中 📦 · 同校可线下自提 · 讲价不抬价</div>
+    </div>
+
+    <!-- 基本属性 -->
+    <div class="ie-form">
+      <div class="ie-form__row">
+        <div class="ie-form__label">性别</div>
+        <div class="ie-form__chip-row">
+          <span class="chip" :class="{active: form.gender===1}" @click="form.gender=1">男</span>
+          <span class="chip" :class="{active: form.gender===2}" @click="form.gender=2">女</span>
+          <span class="chip" :class="{active: form.gender===0}" @click="form.gender=0">保密</span>
+        </div>
+      </div>
+      <div class="ie-form__row" @click="showDormPicker">
+        <div class="ie-form__label">所在楼栋</div>
+        <input class="ie-form__input" v-model="form.dorm" placeholder="选择你宿舍所在楼栋" readonly>
+        <i class="ie-form__arrow el-icon-arrow-right"></i>
+      </div>
+      <div class="ie-form__row">
+        <div class="ie-form__label">年级</div>
+        <select class="ie-form__input" v-model="form.grade">
+          <option value="">选择年级</option>
+          <option>大一</option>
+          <option>大二</option>
+          <option>大三</option>
+          <option>大四</option>
+          <option>研一</option>
+          <option>研二</option>
+          <option>研三</option>
+          <option>已毕业</option>
+        </select>
+      </div>
+      <div class="ie-form__row">
+        <div class="ie-form__label">生日</div>
+        <input class="ie-form__input" type="date" v-model="form.birthday">
+      </div>
+    </div>
+
+    <!-- 联系方式 -->
+    <div class="ie-form">
+      <div class="ie-form__row">
+        <div class="ie-form__label">QQ</div>
+        <input class="ie-form__input" v-model="form.qq" placeholder="方便学弟学妹拼单">
+      </div>
+      <div class="ie-form__row">
+        <div class="ie-form__label">微信</div>
+        <input class="ie-form__input" v-model="form.wechat" placeholder="扫码自取">
+      </div>
+    </div>
+
+    <!-- 偏好 -->
+    <div class="ie-form">
+      <div class="ie-form__row">
+        <div class="ie-form__label">交易偏好</div>
+        <div class="ie-form__chip-row">
+          <span class="chip" :class="{active: form.prefer.includes('面交')}" @click="togglePrefer('面交')">宿舍自提</span>
+          <span class="chip" :class="{active: form.prefer.includes('快递')}" @click="togglePrefer('快递')">包邮快递</span>
+          <span class="chip" :class="{active: form.prefer.includes('拼单')}" @click="togglePrefer('拼单')">支持拼单</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ie-actions">
+      <button class="ie-btn" @click="save">保存修改</button>
+    </div>
+
+    <div class="ie-logout" @click="logout">退出登录</div>
+  </div>
+
+  <!-- 楼栋选择弹层 -->
+  <div class="pe-mask" v-if="showDorm" @click="showDorm=false" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10"></div>
+  <div v-if="showDorm" style="position:fixed; left:0; right:0; bottom:0; background:white; border-radius:20px 20px 0 0; z-index:11; padding: 16px">
+    <div style="font-weight: 600; padding-bottom: 12px; text-align: center">选择楼栋</div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px">
+      <div v-for="d in dormOptions" :key="d"
+        @click="selectDorm(d)"
+        style="background: var(--primary-light); padding: 12px; border-radius: 10px; text-align: center; cursor: pointer; font-size: 13px"
+      >{{d}}</div>
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      userId: '1001',
+      form: {
+        icon: '/imgs/icons/default-icon.svg',
+        nickName: '校园同学',
+        introduc: '',
+        gender: 0,
+        dorm: '',
+        grade: '',
+        birthday: '',
+        qq: '',
+        wechat: '',
+        prefer: [],
+        school: '校园小黑市'
+      },
+      showDorm: false,
+      dormOptions: ['1号楼', '2号楼', '3号楼', '紫荆楼', '南区', '西区', '研究生公寓']
+    },
+    created() {
+      // 尝试读 session 缓存
+      const cached = sessionStorage.getItem('userInfo');
+      if (cached) {
+        try {
+          const obj = JSON.parse(cached);
+          Object.assign(this.form, obj);
+        } catch (e) {}
+      }
+    },
+    methods: {
+      goBack() { history.back(); },
+      onImgErr(e) { e.target.src = '/imgs/icons/default-icon.svg'; },
+      changeAvatar() {
+        // 演示版：循环切换 SVG
+        const samples = [
+          '/imgs/icons/default-icon.svg',
+          '/imgs/goods/1.svg',
+          '/imgs/goods/8.svg',
+          '/imgs/goods/13.svg'
+        ];
+        const idx = samples.indexOf(this.form.icon);
+        this.form.icon = samples[(idx + 1) % samples.length];
+        this.$message.success('头像已切换');
+      },
+      togglePrefer(t) {
+        const i = this.form.prefer.indexOf(t);
+        if (i > -1) this.form.prefer.splice(i, 1);
+        else this.form.prefer.push(t);
+      },
+      showDormPicker() { this.showDorm = true; },
+      selectDorm(d) { this.form.dorm = d; this.showDorm = false; },
+      save() {
+        sessionStorage.setItem('userInfo', JSON.stringify(this.form));
+        this.$message.success('🎉 资料保存成功');
+        setTimeout(() => location.href = '/info.html', 800);
+      },
+      saveDraft() {
+        sessionStorage.setItem('userInfo', JSON.stringify(this.form));
+        this.$message.info('已保存到草稿');
+      },
+      logout() {
+        if (!confirm('确定要退出登录吗？')) return;
+        sessionStorage.clear();
+        this.$message.success('已退出登录');
+        setTimeout(() => location.href = '/login.html', 600);
+      }
+    }
+  });
+</script>
+</body>
+</html>

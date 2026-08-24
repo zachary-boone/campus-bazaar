@@ -1,0 +1,47 @@
+# ====================================================================
+# 校园小黑市交易平台 - Git 忽略规则
+# ====================================================================
+
+# --- 后端构建产物 ---
+backend/target/
+backend/*.jar
+backend/*.war
+backend/*.log
+backend/run.log
+*.class
+*.original
+
+# --- IDE 配置 ---
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# --- 临时文件 ---
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- SQL 备份（仓库里只放最终版）---
+backend/src/main/resources/db/*.bak
+
+# --- 不上传到 GitHub 的项目文档/记忆 ---
+# （这些是开发过程文档，仓库里只要 README）
+/docs-改造方案.md
+.workbuddy/
+memory/
+
+# --- nginx 无关产物（前端项目独立维护，不入本仓库）---
+# 注：本项目前端托管在 nginx-1.18.0/html/campus-bazaar/ 独立目录
+#     如果将来把前端也迁入，则取消注释下一行
+# frontend/
+
+# --- 日志 ---
+*.log
+logs/

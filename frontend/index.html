@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>校园小黑市 · 二手交易</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <link href="./css/main.css" rel="stylesheet">
+  <style>
+    /* ========= 首页特有 ========= */
+    body { background: #F5F7FA; }
+    .home-content {
+      height: calc(100% - 56px);
+      overflow-y: auto;
+      padding-bottom: 76px;
+    }
+    /* 顶部 */
+    .home-bar {
+      background: linear-gradient(180deg, #07C160 0%, #06AE56 70%, #F5F7FA 100%);
+      padding: 8px 16px 28px;
+      color: white;
+    }
+    .home-bar__top { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+    .city-chip {
+      background: rgba(255,255,255,0.22);
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 13px;
+      display: flex; align-items: center;
+      backdrop-filter: blur(8px);
+    }
+    .search-input {
+      flex: 1;
+      background: white;
+      border-radius: 18px;
+      display: flex; align-items: center;
+      padding: 0 14px;
+      height: 36px;
+      font-size: 13px;
+      color: #9CA3AF;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .search-input i { margin-right: 6px; }
+    .home-bar__icon {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.22);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      backdrop-filter: blur(8px);
+    }
+    /* 大 banner */
+    .hero {
+      margin: 12px 16px 0;
+      border-radius: 16px;
+      overflow: hidden;
+      height: 130px;
+      background: linear-gradient(135deg, #5B8FF9 0%, #07C160 100%);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      position: relative;
+      box-shadow: 0 6px 20px rgba(91,143,249,0.3);
+    }
+    .hero__text { color: white; flex: 1; }
+    .hero__text h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
+    .hero__text p { margin: 0; font-size: 13px; opacity: 0.95; }
+    .hero__emojis { font-size: 38px; letter-spacing: 4px; }
+    .hero__emojis div { animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    /* 四宫格 quick */
+    .quick-grid {
+      margin: 16px 16px 0;
+      background: white;
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 14px 6px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+    .quick-cell {
+      text-align: center;
+      padding: 6px 0;
+    }
+    .quick-cell__icon {
+      width: 44px; height: 44px;
+      margin: 0 auto 6px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      color: white;
+    }
+    .quick-cell__label { font-size: 12px; color: var(--text-1); }
+
+    /* 分类 */
+    .cat-grid {
+      margin: 16px 16px 0;
+      background: white;
+      border-radius: 16px;
+      padding: 16px 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+    .cat-grid__title {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .cat-grid__title h3 { margin: 0; font-size: 16px; }
+    .cat-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .cat-cell {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .cat-cell__icon {
+      width: 48px; height: 48px;
+      margin: 0 auto 6px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      color: white;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .cat-cell__label { font-size: 12px; color: var(--text-1); }
+
+    /* 楼层定位 */
+    .dorm-bar {
+      margin: 16px 16px 0;
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+    .dorm-bar__title {
+      display: flex; align-items: center;
+      margin-bottom: 12px;
+    }
+    .dorm-bar__title h3 { margin: 0 8px 0 0; font-size: 16px; }
+    .dorm-bar__title .chip { margin: 0; }
+    .dorm-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .dorm-cell {
+      background: linear-gradient(135deg, #E1F5FE, #E8F5E9);
+      padding: 14px 10px;
+      border-radius: 12px;
+      text-align: center;
+      position: relative;
+    }
+    .dorm-cell__name { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .dorm-cell__count { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .dorm-cell__hot {
+      position: absolute;
+      top: 4px; right: 6px;
+      font-size: 10px;
+      color: var(--accent);
+    }
+
+    /* 拼单专区 banner */
+    .groupon-banner {
+      margin: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #FFE8E5 0%, #FFCDD2 100%);
+      display: flex; align-items: center;
+      box-shadow: 0 2px 12px rgba(255,107,107,0.1);
+    }
+    .groupon-banner__icon { font-size: 36px; margin-right: 12px; }
+    .groupon-banner__text { flex: 1; }
+    .groupon-banner__text h4 { margin: 0 0 2px; font-size: 15px; color: #C62828; }
+    .groupon-banner__text p { margin: 0; font-size: 12px; color: #8D4540; }
+
+    /* 出物瀑布流 (双列卡片) */
+    .feed-title {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 16px 10px;
+    }
+    .feed-title h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .feed-tabs { display: flex; gap: 8px; font-size: 13px; }
+    .feed-tab {
+      padding: 4px 10px;
+      border-radius: 10px;
+      color: var(--text-2);
+    }
+    .feed-tab.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
+    .feed-grid {
+      padding: 0 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .goods-card {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      animation: fade-in .4s ease-out;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .goods-card__img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: #F0F0F0;
+    }
+    .goods-card__body { padding: 10px 12px 12px; }
+    .goods-card__title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      height: 34px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .goods-card__price {
+      margin-top: 4px;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .goods-card__price small { font-size: 12px; }
+    .goods-card__meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    .goods-card__tag {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border-radius: 6px;
+      font-size: 10px;
+      margin-right: 4px;
+    }
+    .goods-card__liked {
+      display: flex; align-items: center;
+      color: var(--text-3);
+    }
+    .goods-card__liked i { margin-right: 2px; color: var(--accent); }
+
+    /* 底部贴子 section */
+    .post-section { margin-top: 8px; padding: 0 16px; }
+    .post-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      display: flex; gap: 12px;
+    }
+    .post-card__cover {
+      width: 84px; height: 84px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .post-card__body { flex: 1; min-width: 0; }
+    .post-card__title {
+      font-size: 14px; font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-1);
+    }
+    .post-card__preview {
+      font-size: 12px; color: var(--text-2);
+      margin-top: 4px;
+      line-height: 1.4;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .post-card__meta {
+      display: flex; align-items: center;
+      font-size: 11px; color: var(--text-3); margin-top: 8px;
+      gap: 8px;
+    }
+    .post-card__meta .avatar {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      margin-right: 4px;
+      background: #E0F2F1;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="home-content">
+
+    <!-- 顶部 渐变 + 搜索 -->
+    <div class="home-bar">
+      <div class="home-bar__top">
+        <div class="city-chip"><i class="el-icon-location-information" style="margin-right:2px"></i>校园 · 全校</div>
+        <div class="search-input" @click="search">
+          <i class="el-icon-search"></i>
+          <span>搜商品名 / 楼栋 / 学长</span>
+        </div>
+        <div class="home-bar__icon" @click="toPage(4)">
+          <i class="el-icon-user"></i>
+        </div>
+      </div>
+      <div style="margin-top:10px; font-size:13px; opacity:.92">
+        👋 Hi～<span style="font-weight:600">{{nickName || '同学'}}</span>，今天也要买/卖点什么？
+      </div>
+    </div>
+
+    <!-- 大 banner 拼单 -->
+    <div class="hero">
+      <div class="hero__text">
+        <h2>🎒 校园小黑市</h2>
+        <p>同校交易 · 拼单包邮 · 每日签到领运费券</p>
+      </div>
+      <div class="hero__emojis">
+        <div style="animation-delay: 0s">📚</div>
+      </div>
+      <div class="hero__emojis" style="position:absolute;right:40px;top:30px">
+        <div style="animation-delay: .3s">💻</div>
+      </div>
+      <div class="hero__emojis" style="position:absolute;right:80px;top:60px">
+        <div style="animation-delay: .6s">🎧</div>
+      </div>
+    </div>
+
+    <!-- 四宫格 quick -->
+    <div class="quick-grid">
+      <div class="quick-cell" @click="toGroupon">
+        <div class="quick-cell__icon" style="background:linear-gradient(135deg,#FF6B6B,#FFA726)">🎁</div>
+        <div class="quick-cell__label">拼单包邮</div>
+      </div>
+      <div class="quick-cell" @click="toSenior">
+        <div class="quick-cell__icon" style="background:linear-gradient(135deg,#5B8FF9,#03A9F4)">👥</div>
+        <div class="quick-cell__label">学长学姐</div>
+      </div>
+      <div class="quick-cell" @click="toNew">
+        <div class="quick-cell__icon" style="background:linear-gradient(135deg,#FFA726,#FFC107)">✨</div>
+        <div class="quick-cell__label">今日新上</div>
+      </div>
+      <div class="quick-cell" @click="toSeckill">
+        <div class="quick-cell__icon" style="background:linear-gradient(135deg,#AB47BC,#7E57C2)">⚡</div>
+        <div class="quick-cell__label">限时秒杀</div>
+      </div>
+    </div>
+
+    <!-- 分类 -->
+    <div class="cat-grid">
+      <div class="cat-grid__title">
+        <h3>商品分类</h3>
+        <a style="font-size:12px;color:var(--text-3)">查看全部 ›</a>
+      </div>
+      <div class="cat-list">
+        <div class="cat-cell" v-for="t in types" :key="t.id" @click="toShopList(t.id, t.name)">
+          <div class="cat-cell__icon" :style="getCatStyle(t.name)">
+            {{ getCatEmoji(t.name) }}
+          </div>
+          <div class="cat-cell__label">{{t.name}}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 楼层定位 -->
+    <div class="dorm-bar">
+      <div class="dorm-bar__title">
+        <h3>📍 楼层定位</h3>
+        <span class="chip">宿舍自提快</span>
+      </div>
+      <div class="dorm-list">
+        <div class="dorm-cell" @click="toDorm('紫荆')">
+          <span class="dorm-cell__hot">🔥</span>
+          <div class="dorm-cell__name">紫荆楼</div>
+          <div class="dorm-cell__count">128件在售</div>
+        </div>
+        <div class="dorm-cell" @click="toDorm('南区')">
+          <div class="dorm-cell__name">南区</div>
+          <div class="dorm-cell__count">86件在售</div>
+        </div>
+        <div class="dorm-cell" @click="toDorm('西区')">
+          <div class="dorm-cell__name">西区</div>
+          <div class="dorm-cell__count">52件在售</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 拼单 banner -->
+    <div class="groupon-banner">
+      <div class="groupon-banner__icon">🎁</div>
+      <div class="groupon-banner__text">
+        <h4>同班同学一起收 · 拼单包邮</h4>
+        <p>每满 3 件免邮 · 拼单成功送运费券</p>
+      </div>
+      <el-button size="mini" type="danger" round>去拼单</el-button>
+    </div>
+
+    <!-- 在售商品 -->
+    <div class="feed-title">
+      <h3>🔥 在售商品</h3>
+      <div class="feed-tabs">
+        <span class="feed-tab active">综合</span>
+        <span class="feed-tab">最新</span>
+        <span class="feed-tab">价格</span>
+      </div>
+    </div>
+    <div class="feed-grid">
+      <div class="goods-card" v-for="g in goodsList" :key="g.id" @click="toGoods(g.id)">
+        <img class="goods-card__img" :src="g.img" @error="onImgErr">
+        <div class="goods-card__body">
+          <div class="goods-card__title">{{g.name}}</div>
+          <div class="goods-card__price"><small>¥</small>{{g.price}}</div>
+          <div class="goods-card__meta">
+            <span><span class="goods-card__tag">{{g.area}}</span></span>
+            <span class="goods-card__liked"><i>♥</i> {{g.comments || 0}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 同学校园动态 -->
+    <div class="feed-title">
+      <h3>📰 同学校园动态</h3>
+      <a style="font-size:12px;color:var(--text-3)">更多 ›</a>
+    </div>
+    <div class="post-section">
+      <div class="post-card" v-for="p in posts" :key="p.id" @click="toPost(p.id)">
+        <img class="post-card__cover" :src="p.img" @error="onImgErr">
+        <div class="post-card__body">
+          <div class="post-card__title">{{p.title}}</div>
+          <div class="post-card__preview">{{p.preview}}</div>
+          <div class="post-card__meta">
+            <img class="avatar" :src="p.icon">
+            <span>{{p.name}}</span>
+            <span style="color:var(--primary)">· {{p.location}}</span>
+            <span style="margin-left:auto"><i style="color:var(--accent)">♥</i> {{p.liked}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <foot-bar :active-btn="1"></foot-bar>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/footer.js"></script>
+<script>
+  const FALLBACK_IMG = "'/imgs/goods/0.svg'";
+  const app = new Vue({
+    el: "#app",
+    data: {
+      types: [],
+      goodsList: [],
+      posts: [],
+      current: 1,
+      isReachBottom: false,
+      nickName: ''
+    },
+    created() {
+      this.nickName = sessionStorage.getItem('nickName') || '';
+      this.queryTypes();
+      this.queryGoods();
+      this.queryPosts();
+    },
+    methods: {
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      getCatEmoji(name) {
+        return ({'数码':'📱','图书':'📚','生活':'🧴','服饰':'🧥','运动':'🏃','美妆':'💄','其他':'📦'})[name] || '🛒';
+      },
+      getCatStyle(name) {
+        const m = {
+          '数码': 'linear-gradient(135deg,#5B8FF9,#26C6DA)',
+          '图书': 'linear-gradient(135deg,#9575CD,#7986CB)',
+          '生活': 'linear-gradient(135deg,#66BB6A,#26A69A)',
+          '服饰': 'linear-gradient(135deg,#EF5350,#EC407A)',
+          '运动': 'linear-gradient(135deg,#42A5F5,#5C6BC0)',
+          '美妆': 'linear-gradient(135deg,#FF7043,#FFCA28)',
+          '其他': 'linear-gradient(135deg,#78909C,#90A4AE)'
+        };
+        return 'background:' + (m[name] || 'linear-gradient(135deg,#26A69A,#5B8FF9)');
+      },
+      queryTypes() {
+        axios.get("/goods/category/list")
+          .then(({data}) => this.types = data)
+          .catch(err => this.$message.error(err && err.toString && err.toString()));
+      },
+      queryGoods() {
+        axios.get("/goods/of/type", { params: { typeId: 0, current: this.current }})
+          .then(({data}) => {
+            data.forEach(g => {
+              g.img = (g.images||'').split(',')[0] || '/imgs/goods/0.svg';
+            });
+            this.goodsList = this.goodsList.concat(data);
+          });
+      },
+      queryPosts() {
+        axios.get("/post/hot?current=1")
+          .then(({data}) => {
+            data.forEach(p => {
+              p.img = (p.images||'').split(',')[0] || '/imgs/post-dorm.svg';
+              p.preview = (p.content||'').replace(/<[^>]+>/g,'').slice(0,40);
+            });
+            this.posts = data;
+          });
+      },
+      toShopList(id, name) { location.href = "/shop-list.html?type=" + id + "&name=" + name; },
+      toGoods(id) { location.href = "/shop-detail.html?id=" + id; },
+      toPost(id) { location.href = "/post-detail.html?id=" + id; },
+      toPage(i) { location.href = "/info.html"; },
+      toDorm(name) { location.href = "/shop-list.html?name=" + encodeURIComponent(name); },
+      toGroupon() { this.$message.success('🎁 拼单专区即将上线'); },
+      toSenior() { this.$message.success('👥 学长学姐专区即将上线'); },
+      toNew() { this.$message.success('✨ 今日新上筛选已应用'); },
+      toSeckill() { location.href = "/shop-detail.html?id=1"; },
+      search() { this.$message.info('请输入关键词搜索 (示例实现)'); }
+    }
+  });
+</script>
+</body>
+</html>

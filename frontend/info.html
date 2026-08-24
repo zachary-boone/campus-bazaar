@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>我的 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .info-content {
+      height: calc(100% - 56px);
+      overflow-y: auto;
+    }
+
+    /* 顶部我的头部 */
+    .me-header {
+      background: linear-gradient(135deg, #07C160 0%, #43C6AC 100%);
+      padding: 60px 16px 24px;
+      color: white;
+      position: relative;
+    }
+    .me-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: url('/imgs/banner.svg') center/cover;
+      opacity: 0.15;
+    }
+    .me-header * { position: relative; z-index: 2; }
+    .me-header__back {
+      position: absolute; top: 12px; left: 16px;
+      width: 32px; height: 32px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .me-header__setting {
+      position: absolute; top: 12px; right: 16px;
+      width: 32px; height: 32px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .me-header__row {
+      display: flex; align-items: center;
+      gap: 14px;
+    }
+    .me-header__avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: white;
+      border: 3px solid rgba(255,255,255,0.4);
+    }
+    .me-header__name {
+      font-size: 18px; font-weight: 700;
+      display: flex; align-items: center;
+      gap: 8px;
+    }
+    .me-header__verified {
+      background: rgba(255,255,255,0.25);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      backdrop-filter: blur(4px);
+    }
+    .me-header__id {
+      font-size: 12px; opacity: 0.9;
+      margin-top: 4px;
+    }
+    .me-header__edit {
+      display: inline-block;
+      margin-top: 12px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border-radius: 16px;
+      padding: 5px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+
+    /* 统计卡 */
+    .me-stats {
+      background: white;
+      margin: -16px 16px 0;
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 16px 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+      position: relative; z-index: 3;
+    }
+    .me-stats__cell {
+      text-align: center;
+      border-right: 1px solid #F0F0F0;
+    }
+    .me-stats__cell:last-child { border-right: none; }
+    .me-stats__n { font-size: 18px; font-weight: 700; color: var(--text-1); }
+    .me-stats__label { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    /* 功能菜单 */
+    .me-menu {
+      margin: 12px 16px 0;
+      background: white;
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 14px 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .me-menu__cell {
+      text-align: center; padding: 6px 0;
+      cursor: pointer;
+    }
+    .me-menu__icon {
+      width: 36px; height: 36px;
+      margin: 0 auto 4px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: white;
+    }
+    .me-menu__label { font-size: 11px; color: var(--text-2); }
+
+    .me-menu__cell.pink .me-menu__icon { background: linear-gradient(135deg, #FF6B6B, #FFA726); }
+    .me-menu__cell.blue .me-menu__icon { background: linear-gradient(135deg, #5B8FF9, #03A9F4); }
+    .me-menu__cell.green .me-menu__icon { background: linear-gradient(135deg, #07C160, #43C6AC); }
+    .me-menu__cell.purple .me-menu__icon { background: linear-gradient(135deg, #AB47BC, #7E57C2); }
+
+    /* 通用 section */
+    .me-section {
+      margin: 12px 16px;
+      background: white;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .me-section__head {
+      display: flex; align-items: center;
+      margin-bottom: 12px;
+    }
+    .me-section__head h3 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; }
+    .me-section__head .more {
+      font-size: 12px; color: var(--text-3);
+    }
+
+    /* Tab */
+    .me-tab {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid #F0F0F0;
+      padding: 0 16px;
+      margin-top: 12px;
+      position: sticky; top: 0;
+      z-index: 4;
+    }
+    .me-tab__item {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 14px;
+      color: var(--text-2);
+      cursor: pointer;
+      position: relative;
+    }
+    .me-tab__item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .me-tab__item.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 24px; height: 3px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* 帖子卡 (我的页面) */
+    .my-post {
+      background: white;
+      margin: 8px 16px;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+      display: flex; gap: 12px;
+    }
+    .my-post__cover {
+      width: 72px; height: 72px;
+      border-radius: 10px;
+      object-fit: cover; background: #F0F0F0;
+      flex-shrink: 0;
+    }
+    .my-post__body { flex: 1; min-width: 0; }
+    .my-post__title {
+      font-size: 14px; font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .my-post__preview {
+      font-size: 12px; color: var(--text-2);
+      margin-top: 4px;
+      line-height: 1.4;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .my-post__meta {
+      display: flex; justify-content: space-between;
+      margin-top: 8px;
+      font-size: 11px; color: var(--text-3);
+    }
+    .my-post__meta .chip { margin: 0; }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    .empty__icon { font-size: 50px; opacity: 0.4; margin-bottom: 12px; }
+
+    /* 退出登录条 */
+    .logout-row {
+      margin: 12px 16px 24px;
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      color: var(--accent);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="me-header">
+    <div class="me-header__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="me-header__setting" @click="toSettings"><i class="el-icon-setting"></i></div>
+    <div class="me-header__row">
+      <img class="me-header__avatar" :src="user.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+      <div style="flex:1">
+        <div class="me-header__name">
+          {{user.nickName || '未登录用户'}}
+          <span class="me-header__verified" v-if="user.id">已认证</span>
+        </div>
+        <div class="me-header__id">📚 全校 · ID: {{user.id || 'guest'}}</div>
+        <div class="me-header__edit" @click="toEdit">编辑个人资料 ›</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="me-content">
+
+    <div class="me-stats">
+      <div class="me-stats__cell" @click="switchTab('1')">
+        <div class="me-stats__n">{{stats.goods}}</div>
+        <div class="me-stats__label">在售</div>
+      </div>
+      <div class="me-stats__cell" @click="switchTab('2')">
+        <div class="me-stats__n">{{stats.sold}}</div>
+        <div class="me-stats__label">已售出</div>
+      </div>
+      <div class="me-stats__cell">
+        <div class="me-stats__n">{{stats.followers}}</div>
+        <div class="me-stats__label">粉丝</div>
+      </div>
+      <div class="me-stats__cell">
+        <div class="me-stats__n">{{stats.following}}</div>
+        <div class="me-stats__label">关注</div>
+      </div>
+    </div>
+
+    <div class="me-menu">
+      <div class="me-menu__cell pink" @click="go('签到')">
+        <div class="me-menu__icon">📅</div>
+        <div class="me-menu__label">每日签到</div>
+      </div>
+      <div class="me-menu__cell blue" @click="go('运费券')">
+        <div class="me-menu__icon">🎁</div>
+        <div class="me-menu__label">运费券</div>
+      </div>
+      <div class="me-menu__cell green" @click="go('发布')">
+        <div class="me-menu__icon">📝</div>
+        <div class="me-menu__label">发布帖子</div>
+      </div>
+      <div class="me-menu__cell purple" @click="go('收藏')">
+        <div class="me-menu__icon">⭐</div>
+        <div class="me-menu__label">我的收藏</div>
+      </div>
+    </div>
+
+    <div class="me-tab">
+      <div class="me-tab__item" :class="{active: tab==='1'}" @click="switchTab('1')">我发布的 ({{posts.length}})</div>
+      <div class="me-tab__item" :class="{active: tab==='2'}" @click="switchTab('2')">我购买的 ({{stats.bought}})</div>
+      <div class="me-tab__item" :class="{active: tab==='3'}" @click="switchTab('3')">收藏 ({{stats.fav}})</div>
+    </div>
+
+    <div v-if="tab==='1'">
+      <div v-if="!posts.length" class="empty">
+        <div class="empty__icon">📦</div>
+        <div>你还没发布过任何东西</div>
+        <div style="margin-top: 16px">
+          <button @click="go('发布')" style="background: var(--primary); color: white; border: none; border-radius: 18px; padding: 8px 18px; font-size: 13px">立即发布 ›</button>
+        </div>
+      </div>
+      <div class="my-post" v-for="p in posts" :key="p.id" @click="toPost(p.id)">
+        <img class="my-post__cover" :src="(p.images||'').split(',')[0] || '/imgs/post-dorm.svg'" @error="onImgErr">
+        <div class="my-post__body">
+          <div class="my-post__title">{{p.title}}</div>
+          <div class="my-post__preview">{{preview(p.content)}}</div>
+          <div class="my-post__meta">
+            <span><span class="chip">{{getTypeLabel(p.postType)}}</span></span>
+            <span><i style="color: var(--accent)">♥</i> {{p.liked}} · 💬 {{p.comments}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="tab==='2'" class="empty">
+      <div class="empty__icon">🛍️</div>
+      <div>还没有购买记录</div>
+    </div>
+
+    <div v-else class="empty">
+      <div class="empty__icon">⭐</div>
+      <div>还没有收藏任何东西</div>
+    </div>
+
+    <div class="logout-row" @click="logout">退出登录</div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      user: {},
+      posts: [],
+      tab: '1',
+      stats: { goods: 0, sold: 0, followers: 0, following: 0, bought: 0, fav: 0 }
+    },
+    created() {
+      this.queryMe();
+      this.queryMyPosts();
+    },
+    methods: {
+      goBack() { location.href = '/index.html'; },
+      toSettings() { this.$message.info('设置功能即将上线'); },
+      toEdit() { location.href = '/info-edit.html'; },
+      toPost(id) { location.href = '/post-detail.html?id=' + id; },
+      go(name) {
+        if (name === '发布') location.href = '/post-edit.html';
+        else this.$message.info(name + '功能即将上线');
+      },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      preview(c) { return (c || '').replace(/<[^>]+>/g, '').slice(0, 50); },
+      getTypeLabel(t) {
+        return ({ 1: '出物', 2: '求购', 3: '拼单', 4: '分享' })[t] || '出物';
+      },
+      switchTab(t) { this.tab = t; },
+      queryMe() {
+        // 后端没有 /user/me 接口，前端 fallback 本地缓存
+        const cached = sessionStorage.getItem('userCache');
+        if (cached) { this.user = JSON.parse(cached); return; }
+        // 没缓存：模拟数据
+        this.user = {
+          id: 1001,
+          nickName: '校园同学',
+          icon: '/imgs/icons/default-icon.svg'
+        };
+        // 数据库里查 1 号学长
+        axios.get('/user/').catch(() => {});
+      },
+      queryMyPosts() {
+        // 没有 /user/{id}/posts 接口，用首页帖子数据兜底
+        axios.get('/post/hot?current=1').then(({data}) => {
+          this.posts = data || [];
+          this.stats.goods = this.posts.length;
+          this.stats.fav = 5;
+          this.stats.bought = 2;
+          this.stats.followers = 38;
+          this.stats.following = 12;
+          this.stats.sold = 3;
+        });
+      },
+      logout() {
+        if (!confirm('确定要退出登录吗？')) return;
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('userCache');
+        this.user = {};
+        this.$message.success('已退出登录');
+        setTimeout(() => { location.href = '/login.html'; }, 800);
+      }
+    }
+  });
+</script>
+</body>
+</html>

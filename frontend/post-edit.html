@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>发布 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+
+    /* 顶部操作栏 */
+    .pe-bar {
+      position: sticky; top: 0;
+      background: white;
+      display: flex; align-items: center;
+      padding: 12px 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      z-index: 5;
+    }
+    .pe-bar__cancel { font-size: 14px; color: var(--text-2); cursor: pointer; padding: 4px 8px; }
+    .pe-bar__title { flex: 1; text-align: center; font-size: 16px; font-weight: 600; }
+    .pe-bar__submit {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(7,193,96,0.3);
+    }
+    .pe-bar__submit:disabled { background: #B0B7BF; box-shadow: none; }
+
+    .pe-content {
+      padding: 12px 16px 100px;
+    }
+
+    /* 类型选择 chips */
+    .pe-types {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .pe-types__head {
+      font-size: 13px; font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-2);
+    }
+    .pe-types__list {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .pe-types__chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 16px;
+      background: #F5F7FA;
+      font-size: 13px;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .pe-types__chip i { font-size: 14px; }
+    .pe-types__chip.active {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+    .pe-types__chip.active.sell { background: #E3F2FD; color: #1565C0; }
+    .pe-types__chip.active.buy { background: #FFF3E0; color: #E65100; }
+    .pe-types__chip.active.groupon { background: #FFE8E5; color: #C62828; }
+    .pe-types__chip.active.share { background: #F3E5F5; color: #7B1FA2; }
+
+    /* 图片上传 */
+    .pe-imgs {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .pe-imgs__head {
+      font-size: 13px; font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-2);
+      display: flex; align-items: center;
+    }
+    .pe-imgs__head .hint { font-size: 11px; color: var(--text-3); margin-left: auto; }
+    .pe-imgs__list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .pe-imgs__cell {
+      aspect-ratio: 1;
+      background: #F5F7FA;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .pe-imgs__cell.add {
+      color: var(--text-3);
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 2px dashed #E5E7EB;
+    }
+    .pe-imgs__cell.add i { font-size: 24px; }
+    .pe-imgs__cell.has {
+      background: #E0F2F1;
+    }
+    .pe-imgs__cell.has img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .pe-imgs__cell.has .del {
+      position: absolute; top: 4px; right: 4px;
+      width: 18px; height: 18px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    /* 表单卡 */
+    .pe-form {
+      background: white;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .pe-form__title {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 6px 0 10px;
+      background: transparent;
+    }
+    .pe-form__title::placeholder { color: var(--text-3); }
+    .pe-form__divider { height: 1px; background: #F0F0F0; margin: 0 -16px; }
+    .pe-form__content {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      padding: 10px 0 8px;
+      min-height: 80px;
+      resize: none;
+      background: transparent;
+      font-family: inherit;
+    }
+    .pe-form__content::placeholder { color: var(--text-3); }
+    .pe-form__row {
+      display: flex; align-items: center;
+      padding: 10px 0;
+      border-top: 1px solid #F0F0F0;
+    }
+    .pe-form__label {
+      font-size: 14px;
+      color: var(--text-2);
+      width: 70px;
+    }
+    .pe-form__input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      background: transparent;
+    }
+    .pe-form__input.with-suffix { padding-right: 60px; }
+    .pe-form__suffix {
+      font-size: 14px;
+      color: var(--text-3);
+    }
+    .pe-form__hint {
+      font-size: 11px; color: var(--text-3);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #F0F0F0;
+      line-height: 1.5;
+    }
+
+    /* 关联商品卡片 */
+    .pe-shop {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    }
+    .pe-shop__head {
+      display: flex; align-items: center;
+      margin-bottom: 12px;
+    }
+    .pe-shop__head h3 { margin: 0; font-size: 14px; font-weight: 600; flex: 1; }
+    .pe-shop__head .change {
+      font-size: 12px; color: var(--primary); cursor: pointer;
+    }
+    .pe-shop__item {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex; gap: 10px;
+      align-items: center;
+    }
+    .pe-shop__img {
+      width: 56px; height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #F0F0F0;
+    }
+    .pe-shop__body { flex: 1; min-width: 0; }
+    .pe-shop__name {
+      font-size: 13px; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    }
+    .pe-shop__price {
+      font-size: 14px; font-weight: 700;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+    .pe-shop__empty {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* 弹层 (商品选择) */
+    .pe-mask {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+    .pe-sheet {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      z-index: 11;
+      max-height: 70vh;
+      display: flex; flex-direction: column;
+    }
+    .pe-sheet__bar {
+      display: flex; align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .pe-sheet__title { flex: 1; text-align: center; font-weight: 600; }
+    .pe-sheet__close { color: var(--text-3); cursor: pointer; }
+    .pe-sheet__list {
+      padding: 8px 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .pe-sheet__item {
+      display: flex; align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+    }
+    .pe-sheet__item + .pe-sheet__item { border-top: 1px solid #F5F5F5; }
+    .pe-sheet__item img {
+      width: 48px; height: 48px; border-radius: 8px;
+      background: #F0F0F0; object-fit: cover;
+    }
+    .pe-sheet__name { font-size: 14px; font-weight: 600; flex: 1; }
+    .pe-sheet__price { color: var(--accent); font-weight: 700; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="pe-bar">
+    <div class="pe-bar__cancel" @click="goBack">取消</div>
+    <div class="pe-bar__title">发布</div>
+    <button class="pe-bar__submit" :disabled="!canSubmit" @click="submit">发布</button>
+  </div>
+
+  <div class="pe-content">
+
+    <!-- 类型选择 -->
+    <div class="pe-types">
+      <div class="pe-types__head">📌 选择发布类型</div>
+      <div class="pe-types__list">
+        <div class="pe-types__chip" :class="{active: postType===1, sell: postType===1}" @click="setType(1)">
+          <i>🛒</i> 出物
+        </div>
+        <div class="pe-types__chip" :class="{active: postType===2, buy: postType===2}" @click="setType(2)">
+          <i>🙋</i> 求购
+        </div>
+        <div class="pe-types__chip" :class="{active: postType===3, groupon: postType===3}" @click="setType(3)">
+          <i>🎁</i> 拼单
+        </div>
+        <div class="pe-types__chip" :class="{active: postType===4, share: postType===4}" @click="setType(4)">
+          <i>📢</i> 分享
+        </div>
+      </div>
+    </div>
+
+    <!-- 图片 -->
+    <div class="pe-imgs">
+      <div class="pe-imgs__head">
+        📷 照片
+        <span class="hint">最多 9 张 · 第一张为封面</span>
+      </div>
+      <div class="pe-imgs__list">
+        <div class="pe-imgs__cell add" @click="fileSelected" v-if="files.length < 9">
+          <i class="el-icon-camera"></i>
+          <span>上传</span>
+        </div>
+        <div class="pe-imgs__cell has" v-for="(f,i) in files" :key="i">
+          <img :src="f">
+          <i class="del" @click="delFile(i)">✕</i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标题/正文 -->
+    <div class="pe-form">
+      <input class="pe-form__title" v-model="form.title" placeholder="给你的帖子起个标题（必填）">
+      <div class="pe-form__divider"></div>
+      <textarea class="pe-form__content" v-model="form.content" placeholder="说点什么吧～描述越详细越容易卖出 ✨"></textarea>
+      <div class="pe-form__hint">
+        💡 提示：可使用 emoji 表情更生动。发布后可在「我的」页面查看。
+      </div>
+    </div>
+
+    <!-- 附属项 -->
+    <div class="pe-form" v-if="postType===1 || postType===2 || postType===3">
+      <div class="pe-form__row">
+        <div class="pe-form__label">💰 价格</div>
+        <input class="pe-form__input with-suffix" type="number" v-model="form.price" placeholder="例如 58">
+        <div class="pe-form__suffix">元</div>
+      </div>
+      <div class="pe-form__row">
+        <div class="pe-form__label">📍 楼栋</div>
+        <input class="pe-form__input" v-model="form.location" placeholder="例如 紫荆楼 3号楼">
+      </div>
+    </div>
+
+    <!-- 出物专属：质量信息 -->
+    <div class="pe-form" v-if="postType===1">
+      <div class="pe-form__row">
+        <div class="pe-form__label">✨ 成色</div>
+        <select class="pe-form__input" v-model="form.quality">
+          <option value="全新">全新未拆封</option>
+          <option value="九成新">九成新</option>
+          <option value="八成新">八成新</option>
+          <option value="七成新">七成新</option>
+        </select>
+      </div>
+      <div class="pe-form__row">
+        <div class="pe-form__label">⏰ 可面交时间</div>
+        <input class="pe-form__input" v-model="form.tradeTime" placeholder="例如 18:00-22:00">
+      </div>
+    </div>
+
+    <!-- 关联商品 (可选，仅出物时有用) -->
+    <div class="pe-shop" v-if="postType===1">
+      <div class="pe-shop__head">
+        <h3>🔗 关联商品</h3>
+        <span class="change" @click="showSheet = true">
+          {{shop ? '更换' : '(可选)'}}
+        </span>
+      </div>
+      <div class="pe-shop__item" v-if="shop" @click="toShop">
+        <img class="pe-shop__img" :src="shop.images || '/imgs/goods/0.svg'" @error="onImgErr">
+        <div class="pe-shop__body">
+          <div class="pe-shop__name">{{shop.name}}</div>
+          <div class="pe-shop__price">¥ {{shop.price}}</div>
+        </div>
+        <i class="el-icon-arrow-right" style="color: var(--text-3)"></i>
+      </div>
+      <div class="pe-shop__empty" v-else @click="showSheet = true">
+        <i class="el-icon-plus" style="margin-right: 6px"></i>
+        选择已有商品，让帖子带上商品卡
+      </div>
+    </div>
+
+    <!-- 底栏提示 -->
+    <div style="text-align: center; font-size: 11px; color: var(--text-3); padding: 16px 0">
+      发布即同意 <a href="javascript:void(0)" style="color: var(--primary); text-decoration: none">《校园小黑市发布规范》</a>
+    </div>
+
+  </div>
+
+  <!-- 商品选择弹层 -->
+  <div class="pe-mask" v-if="showSheet" @click="showSheet = false"></div>
+  <div class="pe-sheet" v-if="showSheet">
+    <div class="pe-sheet__bar">
+      <div class="pe-sheet__title">选择关联商品</div>
+      <div class="pe-sheet__close" @click="showSheet = false">关闭</div>
+    </div>
+    <div class="pe-sheet__list">
+      <div class="pe-sheet__item" v-for="s in shopOptions" :key="s.id" @click="selectShop(s)">
+        <img :src="(s.images||'').split(',')[0] || '/imgs/goods/0.svg'" @error="onImgErr">
+        <div class="pe-sheet__name">{{s.name}}</div>
+        <div class="pe-sheet__price">¥{{s.price}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      postType: 1,
+      files: [],
+      form: {
+        title: '',
+        content: '',
+        price: '',
+        location: '',
+        quality: '九成新',
+        tradeTime: ''
+      },
+      shop: null,
+      showSheet: false,
+      shopOptions: []
+    },
+    computed: {
+      canSubmit() { return this.form.title.trim().length > 0; }
+    },
+    created() {
+      this.loadShops();
+    },
+    methods: {
+      goBack() { history.back(); },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      setType(t) { this.postType = t; },
+      fileSelected() {
+        // 这里用 SVG 占位代替真实上传
+        const samples = [
+          '/imgs/goods/1.svg', '/imgs/goods/2.svg', '/imgs/goods/3.svg',
+          '/imgs/goods/4.svg', '/imgs/goods/5.svg', '/imgs/goods/7.svg'
+        ];
+        for (let i = 0; i < 3 && this.files.length < 9; i++) {
+          this.files.push(samples[(this.files.length) % samples.length]);
+        }
+        this.$message.info('已为你添加占位图片（演示版，未实现真实上传）');
+      },
+      delFile(i) { this.files.splice(i, 1); },
+      loadShops() {
+        axios.get('/goods/of/type', { params: { typeId: 0, current: 1 }})
+          .then(({data}) => this.shopOptions = data || [])
+          .catch(() => this.shopOptions = []);
+      },
+      selectShop(s) { this.shop = s; this.showSheet = false; },
+      toShop() { if (this.shop) location.href = '/shop-detail.html?id=' + this.shop.id; },
+      submit() {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          this.$message.error('请先登录');
+          setTimeout(() => location.href = '/login.html', 600);
+          return;
+        }
+        if (!this.canSubmit) { this.$message.error('请先填写标题'); return; }
+        this.$message.success('🎉 已为你保存到本地（演示版，后端接口未对接）');
+        setTimeout(() => location.href = '/info.html', 1200);
+      }
+    }
+  });
+</script>
+</body>
+</html>
