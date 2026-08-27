@@ -29,9 +29,10 @@ public class UserController {
     @Resource
     private IUserInfoService userInfoService;
 
-    /** 发送手机验证码 - 无需登录（令牌桶限流 + ZSet 两级频率限制） */
+    /** 发送手机验证码 - 无需登录（令牌桶双层限流 + ZSet 两级频率限制） */
     @PostMapping("/code")
     @com.campus.bazaar.utils.RateLimit(key = "code", rate = 2, capacity = 5,
+            globalRate = 50, globalCapacity = 100,
             message = "验证码发送过于频繁，请稍后再试")
     public Result sendCode(@RequestParam("phone") String phone) {
         return userService.sendCode(phone);
