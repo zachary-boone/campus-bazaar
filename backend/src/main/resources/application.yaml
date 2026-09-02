@@ -42,6 +42,10 @@ spring:
         default-requeue-rejected: true
 mybatis-plus:
   type-aliases-package: com.campus.bazaar.entity # 别名扫描包
+# 业务自定义配置
+bazaar:
+  # 图片上传根目录（UploadController 使用；指向 nginx 托管的前端 imgs 目录）
+  upload-dir: E:/project/nginx-1.18.0/nginx-1.18.0/html/campus-bazaar/imgs/
 management:
   endpoints:
     web:

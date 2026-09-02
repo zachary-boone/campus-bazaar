@@ -157,6 +157,14 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
             return Result.fail("只能操作自己的商品");
         }
 
+        // 3.5 状态约束：已售/交易中的商品不允许下架
+        if (goods.getStatus() != null && goods.getStatus() == 2) {
+            return Result.fail("商品已售出，无需下架");
+        }
+        if (goods.getStatus() != null && goods.getStatus() == 4) {
+            return Result.fail("商品交易中，无法下架");
+        }
+
         // 4. 下架商品
         goods.setStatus(3); // 下架
         goods.setUpdateTime(LocalDateTime.now());
@@ -184,6 +192,11 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         // 3. 判断是否是卖家
         if (!goods.getSellerId().equals(userId)) {
             return Result.fail("只能操作自己的商品");
+        }
+
+        // 3.5 状态约束：只有下架(3)状态可重新上架，防止把已售/交易中商品改回在售
+        if (goods.getStatus() != null && goods.getStatus() != 3) {
+            return Result.fail("仅下架商品可以重新上架");
         }
 
         // 4. 上架商品
@@ -234,6 +247,11 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         // 3. 判断是否是卖家
         if (!goods.getSellerId().equals(userId)) {
             return Result.fail("只能删除自己的商品");
+        }
+
+        // 3.5 状态约束：交易中的商品不允许删除（有未完成订单）
+        if (goods.getStatus() != null && goods.getStatus() == 4) {
+            return Result.fail("商品交易中，无法删除");
         }
 
         // 4. 删除商品

@@ -52,7 +52,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/code",
                         "/user/login",
                         "/user/login/password",
-                        "/user/info/**",
+                        // 仅放行 GET /user/info/{id}（查看他人主页）；/user/info 的 PUT（修改资料）需登录
+                        "/user/info/*",
                         "/error",
                         "/favicon.ico",
                         "/doc.html",

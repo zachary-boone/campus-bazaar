@@ -4,10 +4,12 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.utils.SystemConstants;
+import com.campus.bazaar.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
@@ -17,26 +19,65 @@ import java.util.UUID;
 @RequestMapping("upload")
 public class UploadController {
 
+    /** 上传根目录（默认 nginx 站点 imgs 目录） */
+    @Resource
+    private org.springframework.core.env.Environment environment;
+
+    private String uploadDir() {
+        return environment.getProperty("bazaar.upload-dir", SystemConstants.IMAGE_UPLOAD_DIR);
+    }
+
     @PostMapping("post")
     public Result uploadImage(@RequestParam("file") MultipartFile image) {
+        // 必须登录
+        if (UserHolder.getUserId() == null) {
+            return Result.fail("请先登录");
+        }
         try {
             // 获取原始文件名称
             String originalFilename = image.getOriginalFilename();
+            if (StrUtil.isBlank(originalFilename) || !originalFilename.contains(".")) {
+                return Result.fail("非法的文件名称");
+            }
             // 生成新文件名
             String fileName = createNewFileName(originalFilename);
             // 保存文件
-            image.transferTo(new File(SystemConstants.IMAGE_UPLOAD_DIR, fileName));
+            image.transferTo(new File(uploadDir(), fileName));
             // 返回结果
             log.debug("文件上传成功，{}", fileName);
             return Result.ok(fileName);
         } catch (IOException e) {
-            throw new RuntimeException("文件上传失败", e);
+            log.error("文件上传失败", e);
+            return Result.fail("文件上传失败");
         }
     }
 
-    @GetMapping("/post/delete")
+    @DeleteMapping("/post/delete")
     public Result deleteBlogImg(@RequestParam("name") String filename) {
-        File file = new File(SystemConstants.IMAGE_UPLOAD_DIR, filename);
+        // 必须登录（防止匿名删除服务器文件）
+        if (UserHolder.getUserId() == null) {
+            return Result.fail("请先登录");
+        }
+        // 安全校验：只允许删除 uploadDir 内的普通文件，禁止路径穿越/绝对路径
+        if (StrUtil.isBlank(filename)
+                || filename.contains("..")
+                || filename.startsWith("/")
+                || filename.startsWith("\\")
+                || filename.contains(":")) {
+            return Result.fail("错误的文件名称");
+        }
+        File base = new File(uploadDir()).getAbsoluteFile();
+        File file = new File(base, filename);
+        try {
+            // 规范化后必须仍位于上传根目录内（防御符号链接/多级目录穿越）
+            String basePath = base.getCanonicalPath();
+            String targetPath = file.getCanonicalPath();
+            if (!targetPath.startsWith(basePath + File.separator)) {
+                return Result.fail("错误的文件名称");
+            }
+        } catch (IOException e) {
+            return Result.fail("错误的文件名称");
+        }
         if (file.isDirectory()) {
             return Result.fail("错误的文件名称");
         }

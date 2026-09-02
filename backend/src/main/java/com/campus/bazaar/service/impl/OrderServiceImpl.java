@@ -34,6 +34,25 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Resource
     private RabbitTemplate rabbitTemplate;
 
+    @Resource
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 清除商品详情缓存（预占/售出/释放后旧缓存会残留"在售"状态，需立即删 + 延迟再删兜底）
+     */
+    private void evictGoodsCache(Long goodsId) {
+        String key = com.campus.bazaar.utils.RedisConstants.CACHE_GOODS_KEY + goodsId;
+        stringRedisTemplate.delete(key);
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ignore) {
+                Thread.currentThread().interrupt();
+            }
+            stringRedisTemplate.delete(key);
+        });
+    }
+
     @Override
     @Transactional
     public Result createOrder(Order order) {
@@ -49,16 +68,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return Result.fail("商品不存在");
         }
         if (goods.getStatus() != 1) {
-            return Result.fail("商品已下架");
+            return Result.fail("商品已下架或已被下单");
         }
         if (goods.getSellerId().equals(userId)) {
             return Result.fail("不能购买自己的商品");
         }
 
-        // 3. 生成订单号
+        // 3. 原子预占商品（在售1 → 交易中4，CAS 防超卖）：
+        //    UPDATE 持有行锁直到事务提交，并发下单只有一人成功，其余影响行数为 0
+        if (goodsMapper.preemptForOrder(goods.getId()) == 0) {
+            return Result.fail("手慢了，商品刚被别人下单");
+        }
+        evictGoodsCache(goods.getId());
+
+        // 4. 生成订单号
         String orderNo = generateOrderNo();
 
-        // 4. 设置订单信息
+        // 5. 设置订单信息
         order.setOrderNo(orderNo);
         order.setBuyerId(userId);
         order.setSellerId(goods.getSellerId());
@@ -68,10 +94,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setCreateTime(LocalDateTime.now());
         order.setUpdateTime(LocalDateTime.now());
 
-        // 5. 保存订单
+        // 6. 保存订单
         save(order);
 
-        // 6. 投递支付状态轮询延迟消息（第 1 级：5s 后首次检查，之后指数退避 10s/20s/40s/80s）
+        // 7. 投递支付状态轮询延迟消息（第 1 级：5s 后首次检查，之后指数退避 10s/20s/40s/80s）
         try {
             rabbitTemplate.convertAndSend(
                     MqConstants.PAY_DELAY_EXCHANGE,
@@ -112,20 +138,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return Result.fail("订单状态异常，无法支付");
         }
 
-        // 5. 模拟支付(直接标记为已支付)
+        // 5. 商品原子置为已售（交易中4 → 已售2，sold+1），防止重复支付/状态竞态
+        if (goodsMapper.markSold(order.getGoodsId()) == 0) {
+            return Result.fail("商品状态异常，无法完成支付");
+        }
+        evictGoodsCache(order.getGoodsId());
+
+        // 6. 模拟支付(直接标记为已支付)
         order.setStatus(2); // 已支付
         order.setPayType(payType);
         order.setPayTime(LocalDateTime.now());
         order.setUpdateTime(LocalDateTime.now());
         updateById(order);
-
-        // 6. 更新商品状态为已售
-        Goods goods = new Goods();
-        goods.setId(order.getGoodsId());
-        goods.setStatus(2); // 已售
-        goods.setSold(1);
-        goods.setUpdateTime(LocalDateTime.now());
-        goodsMapper.updateById(goods);
 
         log.info("💰 模拟支付成功: orderNo={}, payType={}, amount={}",
                 orderNo, payType, order.getAmount());
@@ -164,6 +188,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setUpdateTime(LocalDateTime.now());
         updateById(order);
 
+        // 6. 释放商品预占（交易中4 → 在售1），商品恢复可售
+        if (goodsMapper.releasePreempt(order.getGoodsId()) == 1) {
+            evictGoodsCache(order.getGoodsId());
+        }
+
         log.info("❌ 订单已取消: orderNo={}", orderNo);
 
         return Result.ok("订单已取消");
@@ -180,6 +209,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setCancelTime(LocalDateTime.now());
         order.setUpdateTime(LocalDateTime.now());
         updateById(order);
+
+        // 超时关单同样释放商品预占，避免商品被长期锁死
+        if (goodsMapper.releasePreempt(order.getGoodsId()) == 1) {
+            evictGoodsCache(order.getGoodsId());
+        }
     }
 
     @Override

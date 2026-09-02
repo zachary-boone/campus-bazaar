@@ -13,12 +13,14 @@ import javax.servlet.http.HttpServletRequest;
 public class GlobalExceptionHandler {
 
     /**
-     * 处理业务异常
+     * 处理运行时异常
+     * 说明：业务预期错误均由 Service 层 return Result.fail(...) 返回；走到这里的 RuntimeException
+     * 属意外异常，返回统一文案，避免把内部实现细节（SQL/堆栈）泄漏给前端。
      */
     @ExceptionHandler(RuntimeException.class)
     public Result handleRuntimeException(RuntimeException e, HttpServletRequest request) {
-        log.error("业务异常: {} - {}", request.getRequestURI(), e.getMessage());
-        return Result.fail(e.getMessage());
+        log.error("业务异常: {} - {}", request.getRequestURI(), e.getMessage(), e);
+        return Result.fail("服务器异常，请稍后再试");
     }
 
     /**

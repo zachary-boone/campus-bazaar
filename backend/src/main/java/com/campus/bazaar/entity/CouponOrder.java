@@ -35,17 +35,22 @@ public class CouponOrder implements Serializable {
     private Long userId;
 
     /**
+     * 关联的主订单id（预留，秒杀券订单与商品订单打通时使用）
+     */
+    private Long orderId;
+
+    /**
      * 购买的代金券id
      */
     private Long couponId;
 
     /**
-     * 支付方式 1：余额支付；2：支付宝；3：微信
+     * 支付方式 0：未支付；1：余额支付；2：支付宝；3：微信
      */
     private Integer payType;
 
     /**
-     * 订单状态，1：未支付；2：已支付；3：已核销；4：已取消；5：退款中；6：已退款
+     * 订单状态（与表定义一致）：0：未支付；1：已支付；2：已核销；-1：超时关闭
      */
     private Integer status;
 

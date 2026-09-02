@@ -81,11 +81,12 @@ java -jar target\campus-bazaar.jar --server.port=8081
 - 库名：`campus_bazaar`（MySQL 8，用户名 root）
 - 建库脚本：`src\main\resources\db\campus_bazaar.sql`
 - 核心表：
-  - `tb_goods` 商品（含 seller_id 卖家、status 状态、price 售价、area 校区、address 楼栋）
+  - `tb_goods` 商品（含 seller_id 卖家、status 状态 1在售/2已售/3下架/4交易中、price 售价、area 校区、address 楼栋）
   - `tb_goods_category` 商品分类（数码电子/图书教材/生活用品/服饰鞋包/运动健身/美妆个护/其他）
+  - `tb_order` 订单（下单即原子预占商品防超卖，支付/取消/超时关单联动商品状态）
   - `tb_post` 出物/求购帖（post_type 1出物 2求购、price、location）
-  - `tb_coupon` / `tb_seckill_coupon` / `tb_coupon_order` 运费券与秒杀券、券订单
-  - `tb_user` / `tb_user_info` / `tb_follow` / `tb_sign` 用户、关注、签到
+  - `tb_coupon` / `tb_seckill_coupon` / `tb_coupon_order` 运费券与秒杀券、券订单（0未支付/1已支付/2已核销/-1超时）
+  - `tb_user` / `tb_user_info` / `tb_follow` / `tb_sign` 用户（含 role 角色）、关注、签到
 
 ## 主要接口
 
@@ -100,7 +101,7 @@ java -jar target\campus-bazaar.jar --server.port=8081
 ## 改造记录
 
 - 包名 `com.campus.bazaar`，工程名 `campus-bazaar`（项目根目录 `E:\project\campus-bazaar\`）
-- 数据库 `campus_bazaar`，表名 / 字段全面校园化（11 张表）
+- 数据库 `campus_bazaar`，表名 / 字段全面校园化（12 张表，含 `tb_order` 订单表）
 - 接口路径：`/shop`→`/goods`、`/shop-type`→`/goods/category`、`/blog`→`/post`、`/voucher`→`/coupon`、`/voucher-order`→`/coupon-order`
 - Redis Key：`cache:shop:`→`cache:goods:` 等
 - 前端：目录 `html/campus-bazaar`，主题色改为校园绿

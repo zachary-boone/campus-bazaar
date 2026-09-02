@@ -46,7 +46,7 @@ public class Goods implements Serializable {
     private Long sellerId;
 
     /**
-     * 商品状态 1在售 2已售 3下架
+     * 商品状态 1在售 2已售 3下架 4交易中(下单锁定,待支付)
      */
     private Integer status;
 

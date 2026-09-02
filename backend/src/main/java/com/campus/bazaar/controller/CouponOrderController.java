@@ -25,4 +25,23 @@ public class CouponOrderController {
     public Result seckillVoucher(@PathVariable("id") Long couponId) {
         return couponOrderService.seckillCoupon(couponId);
     }
+
+    /**
+     * 秒杀券订单支付（模拟，状态 0→1；防重复提交）
+     * @param id 券订单id
+     */
+    @PostMapping("pay/{id}")
+    @com.campus.bazaar.utils.Idempotent(ttl = 3, message = "支付处理中，请勿重复提交")
+    public Result payCouponOrder(@PathVariable("id") Long id) {
+        return couponOrderService.payCouponOrder(id);
+    }
+
+    /**
+     * 秒杀券订单核销（状态 1→2，模拟券使用）
+     * @param id 券订单id
+     */
+    @PutMapping("verify/{id}")
+    public Result verifyCouponOrder(@PathVariable("id") Long id) {
+        return couponOrderService.verifyCouponOrder(id);
+    }
 }
