@@ -54,6 +54,24 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login/password",
                         // 仅放行 GET /user/info/{id}（查看他人主页）；/user/info 的 PUT（修改资料）需登录
                         "/user/info/*",
+                        // ===== 校园小黑市公开接口（无需登录） =====
+                        "/goods/category/list",          // 商品分类
+                        "/goods/of/type",                 // 按分类查商品
+                        "/goods/of/name",                 // 按名称搜索
+                        "/goods/of/nearby",               // 附近商品
+                        "/goods/hot",                     // 热榜
+                        "/goods/{id}",                     // 商品详情
+                        "/post/hot",                      // 热门帖子
+                        "/post/{id}",                     // 帖子详情
+                        "/post/list/{goodsId}",           // 商品关联帖子
+                        "/post/count",                    // 帖子统计
+                        "/post/likes/{id}",               // 点赞列表
+                        "/post/comments/{id}",            // 评论列表
+                        "/post/like/status/{id}",         // 是否点赞
+                        "/coupon/list/{goodsId}",         // 优惠券列表
+                        "/coupon/{id}",                   // 券详情
+                        "/coupon/seckill/{id}",           // 秒杀状态
+                        "/common/{id}",                   // 公共图片
                         "/error",
                         "/favicon.ico",
                         "/doc.html",

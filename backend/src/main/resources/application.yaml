@@ -40,6 +40,8 @@ spring:
         # 手动确认：消费成功才 ack，失败 nack 重新入队
         acknowledge-mode: manual
         default-requeue-rejected: true
+        # 本地无 RabbitMQ 时禁用自动启动，避免反复重连耗资源
+        auto-startup: ${SPRING_RABBIT_LISTENER_AUTOSTARTUP:false}
 mybatis-plus:
   type-aliases-package: com.campus.bazaar.entity # 别名扫描包
 # 业务自定义配置
