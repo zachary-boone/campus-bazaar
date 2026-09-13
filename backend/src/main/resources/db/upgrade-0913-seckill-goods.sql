@@ -73,3 +73,27 @@ WHERE TABLE_SCHEMA = 'campus_bazaar'
 ORDER BY TABLE_NAME, COLUMN_NAME;
 
 SELECT `id`, `name`, `stock`, `seckill_begin`, `seckill_end` FROM `tb_goods` WHERE `id` = 1;
+
+-- --------------------------------------------------------------------
+--  5. 环境同步：补齐 tb_coupon_order 缺失的 order_id 列
+--     该列在初代建库脚本(campus_bazaar.sql)中即存在，早期环境可能未同步，
+--     会导致「券订单超时关单」定时任务报 Unknown column 'order_id'。
+--     注：本次秒杀迁移未改动此表，属历史遗留的「库与脚本不一致」。
+-- --------------------------------------------------------------------
+SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = 'campus_bazaar' AND TABLE_NAME = 'tb_coupon_order' AND COLUMN_NAME = 'order_id');
+SET @sql = IF(@col = 0,
+  'ALTER TABLE `tb_coupon_order` ADD COLUMN `order_id` BIGINT DEFAULT NULL COMMENT ''订单ID(预留,关联主订单)'' AFTER `user_id`',
+  'SELECT 1');
+PREPARE s6 FROM @sql;
+EXECUTE s6;
+DEALLOCATE PREPARE s6;
+
+-- --------------------------------------------------------------------
+--  6. 最终验证：确认 tb_coupon_order 列已齐全
+-- --------------------------------------------------------------------
+SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = 'campus_bazaar'
+  AND TABLE_NAME = 'tb_coupon_order'
+ORDER BY ORDINAL_POSITION;
