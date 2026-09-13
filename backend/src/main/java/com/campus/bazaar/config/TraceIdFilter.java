@@ -1,5 +1,6 @@
 package com.campus.bazaar.config;
 
+import cn.hutool.core.util.StrUtil;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -29,7 +30,7 @@ public class TraceIdFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         String traceId = ((HttpServletRequest) request).getHeader("X-Trace-Id");
-        if (traceId == null || traceId.isBlank()) {
+        if (StrUtil.isBlank(traceId)) {
             traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         }
         MDC.put(TRACE_ID, traceId);

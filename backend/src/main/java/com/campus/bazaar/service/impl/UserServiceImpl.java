@@ -161,7 +161,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result me(String token) {
-        if (token == null || token.isBlank()) {
+        if (StrUtil.isBlank(token)) {
             return Result.fail("未登录");
         }
         // 从 hash 拿用户 profile
@@ -189,7 +189,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result logout(String token) {
-        if (token == null || token.isBlank()) {
+        if (StrUtil.isBlank(token)) {
             return Result.ok();
         }
         stringRedisTemplate.delete(RedisConstants.LOGIN_USER_KEY + token);
