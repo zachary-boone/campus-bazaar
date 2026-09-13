@@ -6,6 +6,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Data
 public class GoodsDTO implements Serializable {
@@ -39,4 +40,14 @@ public class GoodsDTO implements Serializable {
 
     @Size(max = 64, message = "交易时间信息过长")
     private String tradeTime;
+
+    /** 库存：批量商品填实际数量（可供秒杀）；不填默认 1，即传统"一物一件"商品 */
+    @Min(value = 0, message = "库存不能为负数")
+    private Integer stock;
+
+    /** 秒杀开始时间（可空，为空则不限制） */
+    private LocalDateTime seckillBegin;
+
+    /** 秒杀结束时间（可空，为空则不限制） */
+    private LocalDateTime seckillEnd;
 }

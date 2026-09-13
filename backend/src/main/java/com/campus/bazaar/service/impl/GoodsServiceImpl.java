@@ -11,13 +11,16 @@ import com.campus.bazaar.entity.Goods;
 import com.campus.bazaar.entity.User;
 import com.campus.bazaar.mapper.GoodsMapper;
 import com.campus.bazaar.mapper.UserMapper;
+import com.campus.bazaar.mq.GoodsSeckillMessage;
 import com.campus.bazaar.service.IGoodsService;
+import com.campus.bazaar.utils.MqConstants;
 import com.campus.bazaar.utils.RedisConstants;
 import com.campus.bazaar.utils.SystemConstants;
 import com.campus.bazaar.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.geo.Circle;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
@@ -26,13 +29,16 @@ import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -49,9 +55,26 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     @Resource
     private RedissonClient redissonClient;
 
+    @Resource
+    private RabbitTemplate rabbitTemplate;
+
     /** 默认坐标（前端未传经纬度时兜底，可配置） */
     private static final double DEFAULT_X = 114.3055;
     private static final double DEFAULT_Y = 30.5928;
+
+    /**
+     * 商品秒杀 Lua 脚本（原子完成"查库存 + 查重复 + 预扣库存 + 记用户"）：
+     * KEYS[1] = seckill:goods:stock:{goodsId}
+     * KEYS[2] = seckill:goods:user:{goodsId}
+     * ARGV[1] = userId
+     * 返回：1=成功；-1=库存不足；-2=每人限购一件
+     */
+    private static final String GOODS_SECKILL_LUA =
+            "if tonumber(redis.call('get', KEYS[1]) or '0') <= 0 then return -1 end " +
+            "if redis.call('sismember', KEYS[2], ARGV[1]) == 1 then return -2 end " +
+            "redis.call('incrby', KEYS[1], -1) " +
+            "redis.call('sadd', KEYS[2], ARGV[1]) " +
+            "return 1";
 
     @Override
     public Result queryById(Long id) {
@@ -89,6 +112,10 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         }
         if (goods.getScore() == null) {
             goods.setScore(50);
+        }
+        // 库存默认 1 件（传统"一物一件"商品）；批量商品由卖家显式填写，供秒杀使用
+        if (goods.getStock() == null || goods.getStock() < 0) {
+            goods.setStock(1);
         }
         if (goods.getX() == null || goods.getY() == null) {
             goods.setX(DEFAULT_X);
@@ -304,6 +331,104 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
             log.warn("[GEO] 附近检索异常: {}", e.getMessage());
         }
         return Result.ok(result);
+    }
+
+    // ==================== 商品秒杀（由券秒杀迁移而来，二者完全独立） ====================
+
+    /**
+     * 商品秒杀生产端：Redis Lua 原子预扣库存 + 一人一单校验，成功后发 MQ 异步建单。
+     * <p>
+     * 流程与原券秒杀一致，只把作用对象从"券"换成"商品"：
+     * 校验时间窗 → 预热库存 → 商品维度 Redisson 锁 → Lua 预扣 → 发 MQ → 返回"已受理"。
+     * 注意返回的 0 是"已受理"，不是下单成功——订单由消费者异步创建。
+     */
+    @Override
+    public Result seckillGoods(Long goodsId) {
+        Long userId = UserHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("请先登录");
+        }
+        if (com.campus.bazaar.metrics.BizMetrics.seckillRequests != null) {
+            com.campus.bazaar.metrics.BizMetrics.seckillRequests.increment();
+        }
+
+        // 1. 校验商品与秒杀时间窗
+        Goods goods = getById(goodsId);
+        if (goods == null) {
+            return Result.fail("商品不存在");
+        }
+        if (goods.getStatus() == null || goods.getStatus() != 1) {
+            return Result.fail("商品已下架或已售出");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (goods.getSeckillBegin() != null && now.isBefore(goods.getSeckillBegin())) {
+            return Result.fail("秒杀尚未开始");
+        }
+        if (goods.getSeckillEnd() != null && now.isAfter(goods.getSeckillEnd())) {
+            return Result.fail("秒杀已经结束");
+        }
+
+        // 2. Redis 库存预热（首次访问从 DB 拉取，之后以 Redis 为准做预扣）
+        Integer dbStock = goods.getStock() == null ? 0 : goods.getStock();
+        stringRedisTemplate.opsForValue().setIfAbsent(
+                RedisConstants.SECKILL_GOODS_STOCK_KEY + goodsId, String.valueOf(dbStock));
+
+        // 3. Redisson 分布式锁（商品维度）：串行化"检查库存 → 预扣 → 发消息"的编排
+        RLock lock = redissonClient.getLock("lock:goods:seckill:" + goodsId);
+        try {
+            if (!lock.tryLock(0, 5, TimeUnit.SECONDS)) {
+                return Result.fail("系统繁忙，请稍后再试");
+            }
+            // 4. Lua 原子预扣库存 + 一人一单校验
+            DefaultRedisScript<Long> script = new DefaultRedisScript<>(GOODS_SECKILL_LUA, Long.class);
+            Long result = stringRedisTemplate.execute(script, Arrays.asList(
+                            RedisConstants.SECKILL_GOODS_STOCK_KEY + goodsId,
+                            RedisConstants.SECKILL_GOODS_USER_KEY + goodsId),
+                    userId.toString());
+
+            if (result == null || result == -1L) {
+                return Result.fail("库存不足，已被抢光");
+            }
+            if (result == -2L) {
+                return Result.fail("每人限购一件");
+            }
+
+            // 5. 发送 MQ 异步建单，立即返回（削峰）
+            GoodsSeckillMessage message = new GoodsSeckillMessage(
+                    goodsId, userId, UUID.randomUUID().toString().replace("-", ""));
+            try {
+                rabbitTemplate.convertAndSend(
+                        MqConstants.GOODS_SECKILL_EXCHANGE,
+                        MqConstants.GOODS_SECKILL_ROUTING_KEY, message);
+            } catch (Exception e) {
+                // 发消息失败：回滚 Redis 预扣（库存 +1、移除用户），避免"库存扣了订单没建"
+                log.error("[GoodsSeckill] MQ 发送失败，回滚预扣: goodsId={}, userId={}, err={}",
+                        goodsId, userId, e.getMessage());
+                compensateGoodsStock(goodsId, userId);
+                return Result.fail("系统繁忙，请稍后再试");
+            }
+
+            log.info("[GoodsSeckill] 预扣成功，异步下单受理: goodsId={}, userId={}", goodsId, userId);
+            if (com.campus.bazaar.metrics.BizMetrics.seckillSuccess != null) {
+                com.campus.bazaar.metrics.BizMetrics.seckillSuccess.increment();
+            }
+            return Result.ok(0L); // 0 表示已受理，订单由消费者异步创建
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Result.fail("系统繁忙，请稍后再试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * 补偿：下单失败时回滚 Redis 预扣的商品库存与用户记录
+     */
+    public void compensateGoodsStock(Long goodsId, Long userId) {
+        stringRedisTemplate.opsForValue().increment(RedisConstants.SECKILL_GOODS_STOCK_KEY + goodsId);
+        stringRedisTemplate.opsForSet().remove(RedisConstants.SECKILL_GOODS_USER_KEY + goodsId, userId.toString());
     }
 
     private String geoKey(String area) {

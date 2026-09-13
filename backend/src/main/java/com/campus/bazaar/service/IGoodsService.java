@@ -56,6 +56,15 @@ public interface IGoodsService extends IService<Goods> {
     Result deleteGoods(Long goodsId);
 
     /**
+     * 商品秒杀（生产端）：Redis Lua 原子预扣库存 + 一人一单校验，成功后发 MQ 异步建单。
+     * <p>
+     * 返回 0 表示"已受理"（订单由消费者异步创建），并非下单成功。
+     * @param goodsId 商品id
+     * @return 受理结果
+     */
+    Result seckillGoods(Long goodsId);
+
+    /**
      * 附近商品检索（Redis GEO 半径查询，按距离升序）
      * @param x      中心经度
      * @param y      中心纬度

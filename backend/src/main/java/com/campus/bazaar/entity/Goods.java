@@ -101,6 +101,21 @@ public class Goods implements Serializable {
     private String tradeTime;
 
     /**
+     * 库存（秒杀扣减，0 为已抢光；一物一件的商品固定为 1）
+     */
+    private Integer stock;
+
+    /**
+     * 秒杀开始时间（为空则不限制）
+     */
+    private LocalDateTime seckillBegin;
+
+    /**
+     * 秒杀结束时间（为空则不限制）
+     */
+    private LocalDateTime seckillEnd;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

@@ -309,14 +309,14 @@
       </div>
     </div>
 
-    <!-- 拼单 banner -->
-    <div class="groupon-bar">
-      <div class="groupon-bar__icon">🎁</div>
+    <!-- 秒杀 banner -->
+    <div class="groupon-bar" v-if="seckillEnabled && goods.stock > 0">
+      <div class="groupon-bar__icon">⚡</div>
       <div class="groupon-bar__text">
-        <h4>同班拼一拼，包邮到家</h4>
-        <p>已 {{grouponCount}} 人参与 · 差 {{3 - grouponCount}} 人成团</p>
+        <h4>限时秒杀 · 手慢无</h4>
+        <p>剩余 {{goods.stock}} 件 · 每人限购 1 件</p>
       </div>
-      <button class="btn-go">去拼单</button>
+      <button class="btn-go" @click="seckillGoods">立即抢</button>
     </div>
 
     <!-- 卖家卡片 -->
@@ -348,18 +348,18 @@
       <div style="margin-top:14px; font-size:13px; line-height:1.6; color:var(--text-1)" v-html="goods.content || defaultDesc"></div>
     </div>
 
-    <!-- 运费券 -->
-    <div class="section">
-      <div class="section__title">🎁 限时拼单 <span class="badge">省钱</span></div>
-      <div v-for="v in vouchers" :key="v.id">
-        <div class="coupon-row">
-          <div class="coupon-row__price"><small>¥</small>{{getPay(v)}}</div>
-          <div class="coupon-row__body">
-            <div class="coupon-row__title">{{v.title}}</div>
-            <div class="coupon-row__sub">{{v.subTitle || '校区5公里内包邮'}}</div>
-          </div>
-          <button class="coupon-row__btn" @click="seckill(v)">立即领</button>
+    <!-- 限时秒杀（商品库存，原运费券/拼单模块迁移而来） -->
+    <div class="section" v-if="seckillEnabled">
+      <div class="section__title">⚡ 限时秒杀 <span class="badge">手慢无</span></div>
+      <div class="coupon-row">
+        <div class="coupon-row__price"><small>¥</small>{{goods.price}}</div>
+        <div class="coupon-row__body">
+          <div class="coupon-row__title">剩余 {{goods.stock}} 件</div>
+          <div class="coupon-row__sub">{{ seckillSubTitle }}</div>
         </div>
+        <button class="coupon-row__btn" :disabled="goods.stock <= 0" @click="seckillGoods">
+          {{ goods.stock > 0 ? '立即秒杀' : '已抢光' }}
+        </button>
       </div>
     </div>
 
@@ -438,18 +438,31 @@
       util,
       goods: {},
       seller: {},
-      vouchers: [],
       similar: [],
       msgs: [],
       msgText: '',
       liked: false,
-      following: false,
-      grouponCount: 1
+      following: false
+    },
+    computed: {
+      /** 是否展示秒杀模块：配置了秒杀时间窗，或库存大于 1 的批量商品 */
+      seckillEnabled() {
+        const g = this.goods;
+        if (!g || !g.id) return false;
+        const stock = g.stock == null ? 0 : g.stock;
+        return !!(g.seckillBegin || g.seckillEnd || stock > 1);
+      },
+      seckillSubTitle() {
+        const g = this.goods;
+        const stock = g.stock == null ? 0 : g.stock;
+        if (stock <= 0) return '本轮已抢光，下次再来';
+        if (g.seckillEnd) return '抢完即止 · ' + this.formatTime(g.seckillEnd) + ' 结束';
+        return '每人限购 1 件，抢完即止';
+      }
     },
     created() {
       const id = util.getUrlParam("id");
       this.queryGoods(id);
-      this.queryVouchers(id);
       this.querySimilar(id);
       this.seedMsgs();
     },
@@ -460,8 +473,11 @@
         if (!this.goods.price) return '九成新';
         return this.goods.price > 1000 ? '九成新' : this.goods.price > 100 ? '九成新' : '全新';
       },
-      getPay(v) {
-        return v.payValue || (v.actualValue ? Math.floor(v.actualValue * 0.5) : 5);
+      /** 秒杀结束时间格式化（yyyy-MM-dd HH:mm） */
+      formatTime(v) {
+        if (!v) return '';
+        const s = String(v).replace('T', ' ');
+        return s.length > 16 ? s.substring(0, 16) : s;
       },
       queryGoods(id) {
         axios.get("/goods/" + id)
@@ -474,25 +490,6 @@
               name: data.sellerName || '校园同学',
               icon: data.sellerIcon || '/imgs/icons/default-icon.svg'
             };
-          });
-      },
-      queryVouchers(id) {
-        axios.get("/coupon/list/" + id)
-          .then(({data}) => {
-            this.vouchers = (data || []).map(v => ({
-              ...v,
-              title: v.title || '校园包邮券',
-              subTitle: v.subTitle || `满 ¥${v.actualValue || 19} 减 ¥${v.payValue || 5}`
-            }));
-            if (this.vouchers.length === 0) {
-              this.vouchers = [{
-                id: 'demo1',
-                payValue: 5,
-                actualValue: 19,
-                title: '校园包邮券',
-                subTitle: '满 ¥19 减 ¥5 · 全场可用'
-              }];
-            }
           });
       },
       querySimilar(id) {
@@ -525,12 +522,16 @@
       },
       goMessage() { this.$message.info('已为你在留言板定位到顶部'); },
       contactSeller() { this.$message.success('📞 已申请交换联系方式（课程示例）'); },
-      seckill(v) {
+      seckillGoods() {
         const token = sessionStorage.getItem('token');
         if (!token) { this.$message.error('请先登录'); setTimeout(()=> location.href='/login.html', 500); return; }
-        if (this.grouponCount >= 3) { this.$message.success('🎉 拼单已成功，自动发放运费券'); return; }
-        axios.post("/coupon-order/seckill/" + v.id)
-          .then(() => { this.grouponCount++; this.$message.success('✅ 你已加入拼单'); })
+        if (!(this.goods.stock > 0)) { this.$message.warning('手慢了，已抢光'); return; }
+        axios.post("/goods/seckill/" + this.goods.id)
+          .then(() => {
+            // 接口返回 0 表示"已受理"，订单由后台异步创建，引导用户去订单页确认结果
+            this.$message.success('✅ 抢到了！订单处理中，请到「我的订单」查看');
+            if (this.goods.stock > 0) this.goods.stock--;
+          })
           .catch(err => this.$message.error(err && err.toString && err.toString()));
       },
       toGoods(id) { location.href = "/shop-detail.html?id=" + id; }

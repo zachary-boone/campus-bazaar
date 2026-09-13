@@ -31,6 +31,19 @@ public class GoodsController {
     }
 
     /**
+     * 商品秒杀（Redis 预扣库存 + MQ 异步建单；双层令牌桶限流保护）
+     * @param id 商品id
+     * @return 0 表示已受理，订单由消费者异步创建（不是下单成功）
+     */
+    @PostMapping("/seckill/{id}")
+    @com.campus.bazaar.utils.RateLimit(key = "goods-seckill", rate = 20, capacity = 50,
+            globalRate = 200, globalCapacity = 500,
+            message = "秒杀请求过于频繁，请稍后再试")
+    public Result seckillGoods(@PathVariable("id") Long id) {
+        return goodsService.seckillGoods(id);
+    }
+
+    /**
      * 发布商品
      */
     @PostMapping

@@ -100,8 +100,9 @@ java -jar target\campus-bazaar.jar --server.port=8081
 
 ## 改造记录
 
+- **2026-09-13 秒杀迁移到商品**：秒杀对象由"优惠券"改为"商品"。`tb_goods` 新增 `stock`（库存，默认 1）、`seckill_begin`/`seckill_end`（秒杀时间窗，可空）；新增 `POST /goods/seckill/{id}` 接口、`goods.seckill.exchange` 交换机与 `goods.seckill.order.queue` 队列、`GoodsSeckillConsumer` 消费者，异步建 `tb_order` 订单；Redis key 为 `seckill:goods:stock:{id}` / `seckill:goods:user:{id}`；库存对账任务同步覆盖商品。原券秒杀链路**保留未删**，前端已不再调用。升级脚本：`db/upgrade-0913-seckill-goods.sql`
 - 包名 `com.campus.bazaar`，工程名 `campus-bazaar`（项目根目录 `E:\project\campus-bazaar\`）
-- 数据库 `campus_bazaar`，表名 / 字段全面校园化（12 张表，含 `tb_order` 订单表）
+- 数据库 `campus_bazaar`，表名 / 字段全面校园化（13 张表，含 `tb_order` 订单表、`tb_mq_idempotent` 幂等表）
 - 接口路径：`/shop`→`/goods`、`/shop-type`→`/goods/category`、`/blog`→`/post`、`/voucher`→`/coupon`、`/voucher-order`→`/coupon-order`
 - Redis Key：`cache:shop:`→`cache:goods:` 等
 - 前端：目录 `html/campus-bazaar`，主题色改为校园绿
@@ -111,7 +112,7 @@ java -jar target\campus-bazaar.jar --server.port=8081
 
 - **双拦截器认证**：RefreshTokenInterceptor（全路径解析 token + 无感续期 + ThreadLocal 透传）+ LoginInterceptor（白名单外校验登录态），token 有效期 10 小时，活跃访问自动续期
 - **Redisson 分布式锁**：替换手写 SETNX，用于商品缓存防击穿与秒杀场景（锁用户/券维度），解决事务锁失效
-- **秒杀高并发链路**：Redis Lua 预扣库存（原子防超卖 + 一人一单）→ RabbitMQ 异步下单削峰 → 消费者 Redisson 锁 + 事务落库，失败自动补偿库存
+- **商品秒杀高并发链路**：Redis Lua 预扣商品库存（原子防超卖 + 一人一单）→ RabbitMQ 异步下单削峰 → 消费者 Redisson 锁 + 幂等表去重 + DB CAS 扣库存 + 事务建单，失败自动补偿库存
 - **双层令牌桶限流**：Redis Lua 实现（@RateLimit 注解），单用户维度防连点器（秒杀 20/s、验证码 2/s）+ 全局维度兜底防全体流量洪峰（秒杀 200/s、验证码 50/s），先全局后单用户双层拦截
 - **ZSet 点赞排行**：点赞/取消/是否点赞/点赞用户 TopN（ZSet + 时间戳排序）
 - **验证码两级限流**：ZSet 滑动窗口，一级 60s 内 3 次 + 二级 1h 内 10 次

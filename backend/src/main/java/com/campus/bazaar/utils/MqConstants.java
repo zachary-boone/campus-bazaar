@@ -3,17 +3,23 @@ package com.campus.bazaar.utils;
 /**
  * RabbitMQ 常量
  * <p>
- * 两套队列体系：
- * 1. 秒杀异步下单：seckill.exchange → seckill.order.queue
- * 2. 支付状态轮询：5 级 TTL 延迟队列（pay.delay.1~5）→ 死信 → pay.check.queue
+ * 三套队列体系：
+ * 1. 券秒杀异步下单：seckill.exchange → seckill.order.queue
+ * 2. 商品秒杀异步下单：goods.seckill.exchange → goods.seckill.order.queue（与券秒杀完全隔离）
+ * 3. 支付状态轮询：5 级 TTL 延迟队列（pay.delay.1~5）→ 死信 → pay.check.queue
  *    延迟时间按指数退避：5s / 10s / 20s / 40s / 80s
  */
 public class MqConstants {
 
-    /** ========== 秒杀异步下单 ========== */
+    /** ========== 券秒杀异步下单（保留，未被前端使用） ========== */
     public static final String SECKILL_EXCHANGE = "seckill.exchange";
     public static final String SECKILL_QUEUE = "seckill.order.queue";
     public static final String SECKILL_ROUTING_KEY = "seckill.order";
+
+    /** ========== 商品秒杀异步下单 ========== */
+    public static final String GOODS_SECKILL_EXCHANGE = "goods.seckill.exchange";
+    public static final String GOODS_SECKILL_QUEUE = "goods.seckill.order.queue";
+    public static final String GOODS_SECKILL_ROUTING_KEY = "goods.seckill.order";
 
     /** ========== 支付状态轮询（延迟队列 + 死信） ========== */
     /** 延迟交换机（topic）：接收 pay.delay.1 ~ pay.delay.5 */

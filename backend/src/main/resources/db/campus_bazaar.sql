@@ -1,7 +1,7 @@
 -- ====================================================================
 --  校园小黑市交易平台 - 数据库初始化脚本
 --  数据库: campus_bazaar (MySQL 8.x)
---  说明:   11 张表 + 14 件示例商品 + 4 条示例帖子 + 7 个商品分类
+--  说明:   12 张表 + 14 件示例商品 + 4 条示例帖子 + 7 个商品分类
 -- ====================================================================
 
 DROP DATABASE IF EXISTS `campus_bazaar`;
@@ -17,6 +17,7 @@ CREATE TABLE `tb_user` (
   `password`    VARCHAR(128) DEFAULT NULL             COMMENT '密码(可空,验证码登录无密码)',
   `nick_name`   VARCHAR(32)  DEFAULT NULL             COMMENT '昵称',
   `icon`        VARCHAR(255) DEFAULT NULL             COMMENT '头像路径',
+  `role`        TINYINT      DEFAULT 0                COMMENT '角色 0普通用户 1管理员',
   `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -60,7 +61,7 @@ CREATE TABLE `tb_goods` (
   `name`        VARCHAR(128) NOT NULL                COMMENT '商品名称',
   `type_id`     BIGINT       NOT NULL                COMMENT '分类ID',
   `seller_id`   BIGINT       DEFAULT NULL             COMMENT '卖家ID',
-  `status`      TINYINT      DEFAULT 1                COMMENT '状态 1在售 0下架',
+  `status`      TINYINT      DEFAULT 1                COMMENT '状态 1在售 2已售 3下架 4交易中(下单锁定)',
   `images`      TEXT         DEFAULT NULL             COMMENT '商品图(逗号分隔)',
   `area`        VARCHAR(64)  DEFAULT NULL             COMMENT '校区/区域',
   `address`     VARCHAR(128) DEFAULT NULL             COMMENT '楼栋定位',
@@ -71,6 +72,9 @@ CREATE TABLE `tb_goods` (
   `comments`    INT          DEFAULT 0                COMMENT '想要人数',
   `score`       INT          DEFAULT 50               COMMENT '评分(1-50)',
   `trade_time`  VARCHAR(64)  DEFAULT '18:00-22:00'    COMMENT '可面交时间',
+  `stock`       INT          DEFAULT 1                COMMENT '库存(秒杀扣减，0为已抢光)',
+  `seckill_begin` DATETIME   DEFAULT NULL             COMMENT '秒杀开始时间(为空则不限制)',
+  `seckill_end`   DATETIME   DEFAULT NULL             COMMENT '秒杀结束时间(为空则不限制)',
   `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -119,9 +123,13 @@ CREATE TABLE `tb_seckill_coupon` (
 CREATE TABLE `tb_coupon_order` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
   `user_id`     BIGINT       NOT NULL                COMMENT '用户ID',
-  `order_id`    BIGINT       DEFAULT NULL             COMMENT '订单ID',
+  `order_id`    BIGINT       DEFAULT NULL             COMMENT '订单ID(预留,关联主订单)',
   `coupon_id`   BIGINT       NOT NULL                COMMENT '券ID',
   `status`      TINYINT      DEFAULT 0                COMMENT '0未支付 1已支付 2已核销 -1超时',
+  `pay_type`    TINYINT      DEFAULT 0                COMMENT '支付方式 0未支付 1余额 2支付宝 3微信',
+  `pay_time`    DATETIME     DEFAULT NULL             COMMENT '支付时间',
+  `use_time`    DATETIME     DEFAULT NULL             COMMENT '核销时间',
+  `refund_time` DATETIME     DEFAULT NULL             COMMENT '退款时间',
   `create_time` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -130,7 +138,35 @@ CREATE TABLE `tb_coupon_order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='运费券订单';
 
 -- --------------------------------------------------------------------
---  8. 出物/求购帖表
+--  8. 订单表
+-- --------------------------------------------------------------------
+CREATE TABLE `tb_order` (
+  `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_no`       VARCHAR(32)  NOT NULL                COMMENT '订单号',
+  `goods_id`       BIGINT       NOT NULL                COMMENT '商品ID',
+  `buyer_id`       BIGINT       NOT NULL                COMMENT '买家ID',
+  `seller_id`      BIGINT       NOT NULL                COMMENT '卖家ID',
+  `amount`         BIGINT       NOT NULL                COMMENT '订单金额(分)',
+  `status`         TINYINT      DEFAULT 1               COMMENT '订单状态: 1-待支付 2-已支付 3-已完成 4-已取消 5-退款中 6-已退款',
+  `pay_type`       TINYINT      DEFAULT 0               COMMENT '支付方式: 0-未支付 1-余额 2-支付宝 3-微信',
+  `trade_location` VARCHAR(128) DEFAULT NULL            COMMENT '交易地点',
+  `trade_time`     VARCHAR(64)  DEFAULT NULL            COMMENT '交易时间',
+  `remark`         VARCHAR(256) DEFAULT NULL            COMMENT '备注',
+  `pay_time`       DATETIME     DEFAULT NULL            COMMENT '支付时间',
+  `finish_time`    DATETIME     DEFAULT NULL            COMMENT '完成时间',
+  `cancel_time`    DATETIME     DEFAULT NULL            COMMENT '取消时间',
+  `create_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  KEY `idx_buyer_id` (`buyer_id`),
+  KEY `idx_seller_id` (`seller_id`),
+  KEY `idx_goods_id` (`goods_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
+
+-- --------------------------------------------------------------------
+--  9. 出物/求购帖表
 -- --------------------------------------------------------------------
 CREATE TABLE `tb_post` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -154,7 +190,7 @@ CREATE TABLE `tb_post` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出物/求购帖';
 
 -- --------------------------------------------------------------------
---  9. 帖子评论表
+--  10. 帖子评论表
 -- --------------------------------------------------------------------
 CREATE TABLE `tb_post_comments` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -169,7 +205,7 @@ CREATE TABLE `tb_post_comments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子评论';
 
 -- --------------------------------------------------------------------
---  10. 关注关系表
+--  11. 关注关系表
 -- --------------------------------------------------------------------
 CREATE TABLE `tb_follow` (
   `user_id`         BIGINT NOT NULL COMMENT '关注人',
@@ -179,7 +215,7 @@ CREATE TABLE `tb_follow` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='关注关系';
 
 -- --------------------------------------------------------------------
---  11. 签到表
+--  12. 签到表
 -- --------------------------------------------------------------------
 CREATE TABLE `tb_sign` (
   `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -246,3 +282,25 @@ INSERT INTO `tb_post` (goods_id, user_id, icon, name, post_type, title, images, 
    '学弟学妹看过来 | 跳绳瑜伽垫打包出', '/imgs/post-sport.svg',
    '大四整理宿舍,体育器材打包出。<br>跳绳用了2个月、瑜伽垫用了1学期,都保养得很好。<br><br>一起收 ¥55,比单买便宜不少。',
    13000, '西区 5 栋', 1, 0);
+
+-- --------------------------------------------------------------------
+--  MQ 消费幂等表（秒杀异步建单去重，msg_id 唯一键）
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tb_mq_idempotent` (
+  `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `msg_id`        VARCHAR(64)  NOT NULL                COMMENT '消息唯一ID(生产者生成)',
+  `business_type` VARCHAR(32)  DEFAULT NULL            COMMENT '业务类型 seckill_order/goods_seckill_order',
+  `create_time`   DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_msg_id` (`msg_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='MQ消费幂等表';
+
+-- --------------------------------------------------------------------
+--  秒杀演示数据：给商品 1 设置 100 件库存并开启秒杀时间窗
+--  （未显式设置的商品 stock 默认为 1，即传统"一物一件"商品）
+-- --------------------------------------------------------------------
+UPDATE `tb_goods`
+SET `stock` = 100,
+    `seckill_begin` = DATE_SUB(NOW(), INTERVAL 1 DAY),
+    `seckill_end`   = DATE_ADD(NOW(), INTERVAL 30 DAY)
+WHERE `id` = 1;

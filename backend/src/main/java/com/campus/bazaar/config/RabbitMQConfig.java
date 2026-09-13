@@ -77,6 +77,23 @@ public class RabbitMQConfig {
                 .to(seckillExchange()).with(MqConstants.SECKILL_ROUTING_KEY);
     }
 
+    /** ========== 商品秒杀异步下单（与券秒杀队列完全独立） ========== */
+    @Bean
+    public DirectExchange goodsSeckillExchange() {
+        return new DirectExchange(MqConstants.GOODS_SECKILL_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue goodsSeckillQueue() {
+        return QueueBuilder.durable(MqConstants.GOODS_SECKILL_QUEUE).build();
+    }
+
+    @Bean
+    public Binding goodsSeckillBinding() {
+        return BindingBuilder.bind(goodsSeckillQueue())
+                .to(goodsSeckillExchange()).with(MqConstants.GOODS_SECKILL_ROUTING_KEY);
+    }
+
     /** ========== 支付状态轮询 ========== */
     @Bean
     public TopicExchange payDelayExchange() {

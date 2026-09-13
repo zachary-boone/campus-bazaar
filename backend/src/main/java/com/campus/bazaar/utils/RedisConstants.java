@@ -16,6 +16,12 @@ public class RedisConstants {
 
     public static final String SECKILL_STOCK_KEY = "seckill:stock:";
     public static final String SECKILL_USER_KEY = "seckill:user:";
+
+    /** 商品秒杀（由券秒杀迁移而来，key 与券秒杀的互不干扰） */
+    /** 商品预扣库存：seckill:goods:stock:{goodsId} */
+    public static final String SECKILL_GOODS_STOCK_KEY = "seckill:goods:stock:";
+    /** 商品秒杀已抢用户集合：seckill:goods:user:{goodsId}（一人一单） */
+    public static final String SECKILL_GOODS_USER_KEY = "seckill:goods:user:";
     public static final String POST_LIKED_KEY = "post:liked:";
     public static final String FEED_KEY = "feed:";
     public static final String GOODS_GEO_KEY = "goods:geo:";

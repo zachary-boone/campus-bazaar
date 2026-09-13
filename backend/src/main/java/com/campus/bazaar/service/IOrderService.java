@@ -3,6 +3,7 @@ package com.campus.bazaar.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.Order;
+import com.campus.bazaar.mq.GoodsSeckillMessage;
 
 public interface IOrderService extends IService<Order> {
 
@@ -12,6 +13,14 @@ public interface IOrderService extends IService<Order> {
      * @return 订单号
      */
     Result createOrder(Order order);
+
+    /**
+     * 商品秒杀异步建单（供 MQ 消费者调用）
+     * <p>
+     * 幂等去重 → 一人一单二次校验 → CAS 扣商品库存 → 创建待支付订单。
+     * @param message 商品秒杀消息
+     */
+    void createGoodsSeckillOrder(GoodsSeckillMessage message);
 
     /**
      * 模拟支付
