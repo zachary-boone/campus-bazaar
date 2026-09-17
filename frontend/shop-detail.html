@@ -273,9 +273,34 @@
       font-weight: 600;
       border-radius: 24px;
       color: white;
+      white-space: nowrap;
     }
+    .action-btn:disabled { opacity: .5; }
     .action-btn--like { background: linear-gradient(135deg, #FFB74D, #FF8A65); }
     .action-btn--buy { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+    /* 秒杀按钮（多库存 + 时间窗商品可见） */
+    .action-btn--seckill {
+      flex: 0 0 auto;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #FF6B6B, #E53935);
+      box-shadow: 0 4px 12px rgba(229,57,53,.35);
+    }
+    /* 已抢光 / 不可售状态 */
+    .action-btn.is-off {
+      background: #B0BEC5;
+      box-shadow: none;
+    }
+    /* 下单结果里的订单号 */
+    .order-no {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      background: #F1F8E9;
+      border-radius: 6px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: var(--primary-dark);
+    }
   </style>
 </head>
 <body>
@@ -344,6 +369,7 @@
         <div><label>可交易时间</label><span>{{goods.tradeTime || '每天 18:00-22:00'}}</span></div>
         <div><label>原价</label><span>¥ {{goods.price * 2.5 | toFixed}}</span></div>
         <div><label>已发布</label><span>{{goods.sold || 3}} 天前</span></div>
+        <div v-if="seckillEnabled"><label>剩余库存</label><span>{{goods.stock == null ? '-' : goods.stock}} 件</span></div>
       </div>
       <div style="margin-top:14px; font-size:13px; line-height:1.6; color:var(--text-1)" v-html="goods.content || defaultDesc"></div>
     </div>
@@ -416,12 +442,20 @@
       <div class="icon-cell" @click="toggleLike">
         <i :style="{color: liked ? '#FF6B6B' : ''}">♥</i>{{liked ? '已想要' : '想要'}}
       </div>
-      <div class="icon-cell" @click="goMessage">
-        <i class="el-icon-chat-line-round"></i>留言
+      <div class="icon-cell" @click="contactSeller">
+        <i class="el-icon-chat-line-round"></i>联系卖家
       </div>
     </div>
-    <button class="action-btn action-btn--like">收藏学长</button>
-    <button class="action-btn action-btn--buy" @click="contactSeller">联系卖家</button>
+    <!-- 秒杀商品：多库存 + 处于时间窗内才显示 -->
+    <button v-if="seckillEnabled && goods.stock > 0"
+            class="action-btn action-btn--seckill"
+            :disabled="submitting || !canBuy"
+            @click="seckillGoods">⚡ 秒杀 ¥{{goods.price}}</button>
+    <!-- 购买按钮：始终存在，按商品状态自动置灰 -->
+    <button class="action-btn action-btn--buy"
+            :class="{'is-off': !canBuy}"
+            :disabled="submitting || !canBuy"
+            @click="buyNow">{{ buyBtnText }}</button>
   </div>
 </div>
 
@@ -442,7 +476,10 @@
       msgs: [],
       msgText: '',
       liked: false,
-      following: false
+      following: false,
+      meId: null,          // 当前登录用户，用于判断"是否自己的商品"
+      submitting: false,   // 下单/秒杀进行中，防连点
+      payDialogOpen: false // 支付确认框是否已打开，避免轮询期间重复弹框
     },
     computed: {
       /** 是否展示秒杀模块：配置了秒杀时间窗，或库存大于 1 的批量商品 */
@@ -451,6 +488,24 @@
         if (!g || !g.id) return false;
         const stock = g.stock == null ? 0 : g.stock;
         return !!(g.seckillBegin || g.seckillEnd || stock > 1);
+      },
+      /** 是否可购买：在售 + 不是自己发布的商品 */
+      canBuy() {
+        const g = this.goods;
+        if (!g || !g.id) return false;
+        if (g.status !== 1) return false;
+        if (this.meId != null && this.meId === g.sellerId) return false;
+        return true;
+      },
+      /** 购买按钮文案（按商品状态联动） */
+      buyBtnText() {
+        const g = this.goods;
+        if (!g || !g.id) return '立即购买';
+        if (this.meId != null && this.meId === g.sellerId) return '自己的商品';
+        if (g.status === 2) return '已售出';
+        if (g.status === 4) return '交易中';
+        if (g.status === 3) return '已下架';
+        return '立即购买';
       },
       seckillSubTitle() {
         const g = this.goods;
@@ -465,6 +520,7 @@
       this.queryGoods(id);
       this.querySimilar(id);
       this.seedMsgs();
+      this.queryMe();
     },
     methods: {
       goBack() { history.back(); },
@@ -497,7 +553,9 @@
           .then(({data}) => {
             this.similar = (data||[]).filter(g => g.id != id).slice(0, 4)
               .map(g => ({...g, img: (g.images||'').split(',')[0]}));
-          });
+          })
+          // 补 catch：原来失败时会静默变成"暂无相似商品"，看不出是接口挂了
+          .catch(() => { this.similar = []; });
       },
       seedMsgs() {
         this.msgs = [
@@ -522,18 +580,154 @@
       },
       goMessage() { this.$message.info('已为你在留言板定位到顶部'); },
       contactSeller() { this.$message.success('📞 已申请交换联系方式（课程示例）'); },
-      seckillGoods() {
+
+      /** 拉取当前登录用户，用于判断"自己的商品不能购买" */
+      queryMe() {
         const token = sessionStorage.getItem('token');
-        if (!token) { this.$message.error('请先登录'); setTimeout(()=> location.href='/login.html', 500); return; }
+        if (!token) return;
+        axios.get("/user/me")
+          .then(({data}) => { if (data && data.id) this.meId = data.id; })
+          .catch(() => {});
+      },
+      /** 未登录则跳登录页并返回 false */
+      ensureLogin() {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          this.$message.error('请先登录');
+          setTimeout(() => location.href = '/login.html', 500);
+          return false;
+        }
+        return true;
+      },
+
+      // ==================== 立即购买（同步下单，POST /order） ====================
+      buyNow() {
+        if (this.submitting) return;
+        if (!this.ensureLogin()) return;
+        const g = this.goods;
+        if (g.status !== 1) { this.$message.warning('该商品当前不可购买'); return; }
+        if (this.meId != null && this.meId === g.sellerId) { this.$message.warning('不能购买自己发布的商品'); return; }
+
+        const loc = [g.area, g.address].filter(Boolean).join(' · ');
+        // 弹新框前先收掉页面上可能残留的弹层（Element 的 MessageBox 是单例栈）
+        this.util.closeAllPopups();
+        this.$confirm(
+          `确认购买「${g.name}」？<br>` +
+          `金额 <b style="color:#FF6B6B">¥${g.price}</b><br>` +
+          `面交地点：${loc || '与卖家协商'}<br>` +
+          `可交易时间：${g.tradeTime || '与卖家协商'}`,
+          '确认下单',
+          { confirmButtonText: '确认下单', cancelButtonText: '再想想',
+            dangerouslyUseHTMLString: true, type: 'warning',
+            closeOnClickModal: true, closeOnPressEscape: true }
+        ).then(() => {
+          this.submitting = true;
+          axios.post("/order", {
+            goodsId: g.id,
+            amount: g.price,
+            tradeLocation: loc,
+            tradeTime: g.tradeTime || '',
+            remark: '校园小黑市 · 用户端下单'
+          }).then(({data}) => {
+            this.submitting = false;
+            this.goods.status = 4; // 下单成功 → 商品被预占锁定
+            this.askPay(data, '下单成功');
+          }).catch(err => {
+            this.submitting = false;
+            this.$message.error((err && err.toString && err.toString()) || '下单失败');
+          });
+        }).catch(() => {});
+      },
+      /** 下单/秒杀成功后的支付引导（加锁，避免轮询期间弹出第二个对话框） */
+      askPay(orderNo, title) {
+        if (this.payDialogOpen) return;
+        this.payDialogOpen = true;
+        this.util.closeAllPopups();
+        this.$confirm(
+          `订单号：<span class="order-no">${orderNo}</span><br>` +
+          '是否立即支付？（本机模拟支付）',
+          title,
+          { confirmButtonText: '立即支付', cancelButtonText: '稍后支付',
+            dangerouslyUseHTMLString: true, type: 'success',
+            closeOnClickModal: true, closeOnPressEscape: true }
+        ).then(() => {
+          this.payDialogOpen = false;
+          this.payOrder(orderNo);
+        })
+         .catch(() => {
+           this.payDialogOpen = false;
+           this.util.toast('订单已创建，可在「我的」-「我购买的」中继续支付', 'success');
+         });
+      },
+      /** 模拟支付 */
+      payOrder(orderNo) {
+        axios.post("/order/pay/" + orderNo, null, { params: { payType: 1 } })
+          .then(() => {
+            // 原来的 $alert 必须点按钮才关闭，用户会以为"弹窗卡住了"；
+            // 换成会自动消失的通知，点击通知仍可跳到订单列表
+            this.util.notify({
+              title: '🎉 支付完成',
+              message: '支付成功！请按约定时间到面交地点与卖家交易（点此查看订单）',
+              type: 'success',
+              duration: 6000,
+              onClick: () => { location.href = '/info.html?tab=2'; }
+            });
+          })
+          .catch(err => this.util.toast((err && err.toString && err.toString()) || '支付失败', 'error'));
+      },
+
+      // ==================== 立即秒杀（Redis 预扣 + MQ 异步建单） ====================
+      seckillGoods() {
+        if (this.submitting) return;
+        if (!this.ensureLogin()) return;
         if (!(this.goods.stock > 0)) { this.$message.warning('手慢了，已抢光'); return; }
+        this.submitting = true;
         axios.post("/goods/seckill/" + this.goods.id)
           .then(() => {
-            // 接口返回 0 表示"已受理"，订单由后台异步创建，引导用户去订单页确认结果
-            this.$message.success('✅ 抢到了！订单处理中，请到「我的订单」查看');
+            // 接口返回 0 表示"已受理"，订单由后台异步创建，轮询订单结果给用户明确反馈
+            this.$message.success('⚡ 抢购成功，正在为你生成订单…');
             if (this.goods.stock > 0) this.goods.stock--;
+            this.pollSeckillOrder(this.goods.id, 8);
           })
-          .catch(err => this.$message.error(err && err.toString && err.toString()));
+          .catch(err => {
+            this.submitting = false;
+            this.$message.error((err && err.toString && err.toString()) || '秒杀失败');
+          });
       },
+      /** 轮询"我的订单"，确认异步建单结果（每 900ms 一次，最多 n 次） */
+      pollSeckillOrder(goodsId, n) {
+        const retry = (left) => {
+          axios.get("/order/my/", { params: { current: 1, status: 1 } })
+            .then(({data}) => {
+              const list = Array.isArray(data) ? data : ((data && data.list) || []);
+              const hit = list.find(o => o.goodsId === goodsId);
+              if (hit) {
+                this.submitting = false;
+                // 异步建单后库存/状态已变化，重新拉一次详情同步库存与售罄状态
+                setTimeout(() => this.queryGoods(goodsId), 600);
+                this.askPay(hit.orderNo, '⚡ 秒杀成功');
+                return;
+              }
+              if (left > 0) { setTimeout(() => retry(left - 1), 900); return; }
+              this.submitting = false;
+              // 同样是"告知结果 + 给个入口"，用会自动消失的通知，避免留一个悬浮弹窗
+              this.util.notify({
+                title: '提示',
+                message: '抢购已受理，订单生成后可稍后在「我的」-「我购买的」查看（点此前往）',
+                type: 'warning',
+                duration: 6000,
+                onClick: () => { location.href = '/info.html?tab=2'; }
+              });
+            })
+            .catch(() => {
+              if (left > 0) { setTimeout(() => retry(left - 1), 900); return; }
+              this.submitting = false;
+              this.$message.warning('订单结果查询失败，请到「我的」-「我购买的」确认');
+            });
+        };
+        retry(n);
+      },
+
       toGoods(id) { location.href = "/shop-detail.html?id=" + id; }
     }
   });

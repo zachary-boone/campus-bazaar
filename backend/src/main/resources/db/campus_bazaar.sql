@@ -284,6 +284,17 @@ INSERT INTO `tb_post` (goods_id, user_id, icon, name, post_type, title, images, 
    13000, '西区 5 栋', 1, 0);
 
 -- --------------------------------------------------------------------
+--  签到运费券模板（id = 9001，与 SignServiceImpl.SIGN_COUPON_ID 一致）
+--  连续签到满 7 天获得 1 张领取资格，用户领取后写入 tb_coupon_order
+--  只写实体映射的列：Coupon 把 stock/beginTime/endTime 标了
+--  @TableField(exist = false)，实际库里可能没有这三列
+-- --------------------------------------------------------------------
+INSERT INTO `tb_coupon`
+  (`id`, `goods_id`, `title`, `sub_title`, `rules`, `pay_value`, `actual_value`, `type`, `status`)
+VALUES
+  (9001, NULL, '签到运费券', '连续签到 7 天专享', '全场商品运费抵扣 5 元，不可叠加使用，有效期 30 天', 0, 5, 0, 2);
+
+-- --------------------------------------------------------------------
 --  MQ 消费幂等表（秒杀异步建单去重，msg_id 唯一键）
 -- --------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `tb_mq_idempotent` (
@@ -304,3 +315,8 @@ SET `stock` = 100,
     `seckill_begin` = DATE_SUB(NOW(), INTERVAL 1 DAY),
     `seckill_end`   = DATE_ADD(NOW(), INTERVAL 30 DAY)
 WHERE `id` = 1;
+
+-- --------------------------------------------------------------------
+--  更多商品 / 秒杀 / 帖子演示数据：见同目录 seed-0913-more-goods.sql
+--  （幂等可重复执行，已建库环境直接跑该脚本即可）
+-- --------------------------------------------------------------------

@@ -124,6 +124,15 @@
       color: white;
     }
     .me-menu__label { font-size: 11px; color: var(--text-2); }
+    .me-menu__sub { font-size: 10px; color: var(--primary-dark); margin-top: 2px; }
+    .me-menu__cell { position: relative; }
+    .me-menu__badge {
+      position: absolute; top: 0; right: 18px;
+      min-width: 16px; height: 16px; line-height: 16px;
+      padding: 0 4px; border-radius: 8px;
+      background: var(--accent); color: white;
+      font-size: 10px; font-weight: 700; text-align: center;
+    }
 
     .me-menu__cell.pink .me-menu__icon { background: linear-gradient(135deg, #FF6B6B, #FFA726); }
     .me-menu__cell.blue .me-menu__icon { background: linear-gradient(135deg, #5B8FF9, #03A9F4); }
@@ -266,11 +275,11 @@
         <div class="me-stats__n">{{stats.sold}}</div>
         <div class="me-stats__label">已售出</div>
       </div>
-      <div class="me-stats__cell">
+      <div class="me-stats__cell" @click="toFollow('followers')">
         <div class="me-stats__n">{{stats.followers}}</div>
         <div class="me-stats__label">粉丝</div>
       </div>
-      <div class="me-stats__cell">
+      <div class="me-stats__cell" @click="toFollow('following')">
         <div class="me-stats__n">{{stats.following}}</div>
         <div class="me-stats__label">关注</div>
       </div>
@@ -279,11 +288,14 @@
     <div class="me-menu">
       <div class="me-menu__cell pink" @click="go('签到')">
         <div class="me-menu__icon">📅</div>
-        <div class="me-menu__label">每日签到</div>
+        <div class="me-menu__label">{{sign.todaySigned ? '今日已签到' : '每日签到'}}</div>
+        <div class="me-menu__sub" v-if="sign.streak > 0">连续 {{sign.streak}} 天</div>
+        <span class="me-menu__badge" v-if="sign.claimable > 0">{{sign.claimable}}</span>
       </div>
       <div class="me-menu__cell blue" @click="go('运费券')">
         <div class="me-menu__icon">🎁</div>
         <div class="me-menu__label">运费券</div>
+        <div class="me-menu__sub" v-if="sign.claimable > 0">待领 {{sign.claimable}} 张</div>
       </div>
       <div class="me-menu__cell green" @click="go('发布')">
         <div class="me-menu__icon">📝</div>
@@ -322,9 +334,82 @@
       </div>
     </div>
 
-    <div v-else-if="tab==='2'" class="empty">
-      <div class="empty__icon">🛍️</div>
-      <div>还没有购买记录</div>
+    <div v-else-if="tab==='2'">
+      <style>
+        .order-card {
+          display: flex; gap: 12px;
+          background: white;
+          border-radius: 14px;
+          padding: 12px;
+          margin-bottom: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+        .order-card__img {
+          width: 84px; height: 84px; border-radius: 10px;
+          object-fit: cover; flex-shrink: 0; background: #F0F0F0;
+        }
+        .order-card__body { flex: 1; min-width: 0; }
+        .order-card__title {
+          font-size: 14px; font-weight: 600; line-height: 1.35;
+          overflow: hidden; display: -webkit-box;
+          -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .order-card__row {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-top: 6px;
+        }
+        .order-card__amount { color: var(--accent); font-weight: 700; font-size: 16px; }
+        .order-card__status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+        .order-card__status.s-1 { background: #FFF3E0; color: #E65100; }
+        .order-card__status.s-2 { background: var(--primary-light); color: var(--primary-dark); }
+        .order-card__status.s-3 { background: #E8F5E9; color: #2E7D32; }
+        .order-card__status.s-4 { background: #ECEFF1; color: var(--text-3); }
+        .order-card__no, .order-card__loc {
+          font-size: 11px; color: var(--text-3); margin-top: 4px;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .order-card__actions {
+          display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+        }
+        .obtn {
+          border: 1px solid #E5E7EB; background: white; color: var(--text-2);
+          border-radius: 14px; padding: 5px 12px; font-size: 12px;
+        }
+        .obtn--pay {
+          border: none; color: white;
+          background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+          font-weight: 600;
+        }
+      </style>
+
+      <div v-if="!orders.length" class="empty">
+        <div class="empty__icon">🛍️</div>
+        <div>还没有购买记录</div>
+        <div style="margin-top: 16px">
+          <button @click="toHome" style="background: var(--primary); color: white; border: none; border-radius: 18px; padding: 8px 18px; font-size: 13px">去逛逛 ›</button>
+        </div>
+      </div>
+
+      <div class="order-card" v-for="o in orders" :key="o.orderNo">
+        <img class="order-card__img" :src="o.img || '/imgs/goods/0.svg'"
+             @error="onImgErr" @click="toGoods(o.goodsId)">
+        <div class="order-card__body">
+          <div class="order-card__title" @click="toGoods(o.goodsId)">{{ o.goodsName || ('商品 #' + o.goodsId) }}</div>
+          <div class="order-card__row">
+            <span class="order-card__amount">¥ {{ o.amount }}</span>
+            <span class="order-card__status" :class="'s-' + o.status">{{ statusText(o.status) }}</span>
+          </div>
+          <div class="order-card__no">订单号 {{ o.orderNo }}</div>
+          <div class="order-card__loc" v-if="o.tradeLocation">📍 面交：{{ o.tradeLocation }}</div>
+          <div class="order-card__loc" v-if="o.tradeTime">🕙 时间：{{ o.tradeTime }}</div>
+          <div class="order-card__actions">
+            <button v-if="o.status===1" class="obtn obtn--pay" @click="payOrder(o)">去支付</button>
+            <button v-if="o.status===1" class="obtn" @click="cancelOrder(o)">取消订单</button>
+            <button v-if="o.status===2" class="obtn obtn--pay" @click="confirmOrder(o)">确认收货</button>
+            <button class="obtn" @click="toGoods(o.goodsId)">查看商品</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-else class="empty">
@@ -347,60 +432,170 @@
       util,
       user: {},
       posts: [],
+      orders: [],
       tab: '1',
+      sign: { streak: 0, todaySigned: false, claimable: 0 },
       stats: { goods: 0, sold: 0, followers: 0, following: 0, bought: 0, fav: 0 }
     },
     created() {
+      const t = util.getUrlParam('tab');
+      if (t) this.tab = t;
       this.queryMe();
       this.queryMyPosts();
+      this.queryMyOrders();
+      this.querySignInfo();
     },
     methods: {
       goBack() { location.href = '/index.html'; },
+      toHome() { location.href = '/index.html'; },
       toSettings() { this.$message.info('设置功能即将上线'); },
       toEdit() { location.href = '/info-edit.html'; },
       toPost(id) { location.href = '/post-detail.html?id=' + id; },
+      toGoods(id) { if (id) location.href = '/shop-detail.html?id=' + id; },
       go(name) {
         if (name === '发布') location.href = '/post-edit.html';
+        else if (name === '签到' || name === '运费券') location.href = '/sign.html';
         else this.$message.info(name + '功能即将上线');
+      },
+      /** 每日签到：拉取连续天数与可领取运费券张数，用于入口角标（未登录不请求，避免被 401 踢到登录页） */
+      querySignInfo() {
+        if (!sessionStorage.getItem('token')) return;
+        axios.get('/sign/records')
+          .then(({ data }) => {
+            this.sign = {
+              streak: data.streak || 0,
+              todaySigned: !!data.todaySigned,
+              claimable: data.claimable || 0
+            };
+          })
+          .catch(() => {});
       },
       onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
       preview(c) { return (c || '').replace(/<[^>]+>/g, '').slice(0, 50); },
       getTypeLabel(t) {
         return ({ 1: '出物', 2: '求购', 3: '拼单', 4: '分享' })[t] || '出物';
       },
-      switchTab(t) { this.tab = t; },
+      statusText(s) {
+        return ({ 1: '待支付', 2: '已支付', 3: '已完成', 4: '已取消', 5: '退款中', 6: '已退款' })[s] || '未知';
+      },
+      switchTab(t) {
+        this.tab = t;
+        if (t === '2') this.queryMyOrders();
+      },
       queryMe() {
-        // 后端没有 /user/me 接口，前端 fallback 本地缓存
-        const cached = sessionStorage.getItem('userCache');
-        if (cached) { this.user = JSON.parse(cached); return; }
-        // 没缓存：模拟数据
-        this.user = {
-          id: 1001,
-          nickName: '校园同学',
-          icon: '/imgs/icons/default-icon.svg'
-        };
-        // 数据库里查 1 号学长
-        axios.get('/user/').catch(() => {});
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+          const cached = sessionStorage.getItem('userCache');
+          this.user = cached ? JSON.parse(cached) : {};
+          return;
+        }
+        axios.get('/user/me')
+          .then(({data}) => {
+            this.user = data || {};
+            sessionStorage.setItem('userCache', JSON.stringify(this.user));
+            if (this.user.id) {
+              // 缓存自己的 id，关注列表/他人主页就不用再查一次
+              sessionStorage.setItem('userId', String(this.user.id));
+              this.queryFollowCounts(this.user.id);
+            }
+          })
+          .catch(() => {});
+      },
+      /** 粉丝 / 关注：走 /follow/counts/{id} 实时统计（此前这两个数字一直是写死的 0） */
+      queryFollowCounts(userId) {
+        axios.get('/follow/counts/' + userId)
+          .then(({data}) => {
+            this.stats.followers = (data && data.followers) || 0;
+            this.stats.following = (data && data.following) || 0;
+          })
+          .catch(() => {});
+      },
+      toFollow(tab) {
+        if (!sessionStorage.getItem('token')) { this.$message.error('请先登录'); return; }
+        location.href = '/follow-list.html?tab=' + tab;
       },
       queryMyPosts() {
-        // 没有 /user/{id}/posts 接口，用首页帖子数据兜底
-        axios.get('/post/hot?current=1').then(({data}) => {
-          this.posts = data || [];
-          this.stats.goods = this.posts.length;
-          this.stats.fav = 5;
-          this.stats.bought = 2;
-          this.stats.followers = 38;
-          this.stats.following = 12;
-          this.stats.sold = 3;
+        const token = sessionStorage.getItem('token');
+        if (!token) { this.posts = []; return; }
+        axios.get('/post/of/me?current=1')
+          .then(({data}) => {
+            this.posts = data || [];
+            this.stats.goods = this.posts.length;
+          })
+          .catch(() => { this.posts = []; });
+      },
+      /** 我购买的：真实订单列表（/order/my/），并回填商品名/图 */
+      queryMyOrders() {
+        const token = sessionStorage.getItem('token');
+        if (!token) { this.orders = []; this.stats.bought = 0; return; }
+        axios.get('/order/my/', { params: { current: 1 } })
+          .then(({data}) => {
+            const list = Array.isArray(data) ? data : ((data && data.list) || []);
+            this.orders = list;
+            this.stats.bought = list.length;
+            this.stats.sold = list.filter(o => o.status >= 2).length;
+            this.fillGoodsInfo(list);
+          })
+          .catch(() => { this.orders = []; });
+      },
+      fillGoodsInfo(list) {
+        const ids = Array.from(new Set(list.map(o => o.goodsId).filter(Boolean)));
+        ids.forEach(id => {
+          axios.get('/goods/' + id)
+            .then(({data}) => {
+              if (!data || !data.id) return;
+              list.forEach(o => {
+                if (o.goodsId === id) {
+                  this.$set(o, 'goodsName', data.name);
+                  this.$set(o, 'img', (data.images || '').split(',')[0] || '/imgs/goods/0.svg');
+                }
+              });
+            })
+            .catch(() => {});
         });
       },
+      payOrder(o) {
+        axios.post('/order/pay/' + o.orderNo, null, { params: { payType: 1 } })
+          .then(() => {
+            o.status = 2;
+            this.$message.success('支付成功，等待面交');
+          })
+          .catch(err => this.$message.error((err && err.toString && err.toString()) || '支付失败'));
+      },
+      cancelOrder(o) {
+        this.util.closeAllPopups();
+        this.$confirm('确定取消该订单？取消后商品会重新上架。', '取消订单',
+          { confirmButtonText: '确定取消', cancelButtonText: '再想想', type: 'warning',
+            closeOnClickModal: true, closeOnPressEscape: true })
+          .then(() => axios.put('/order/cancel/' + o.orderNo)
+            .then(() => { o.status = 4; this.util.toast('订单已取消', 'success'); })
+            .catch(err => this.util.toast((err && err.toString && err.toString()) || '取消失败', 'error')))
+          .catch(() => {});
+      },
+      confirmOrder(o) {
+        this.util.closeAllPopups();
+        this.$confirm('确认已收到商品？确认后订单完成。', '确认收货',
+          { confirmButtonText: '确认收货', cancelButtonText: '取消', type: 'success',
+            closeOnClickModal: true, closeOnPressEscape: true })
+          .then(() => axios.put('/order/confirm/' + o.orderNo)
+            .then(() => { o.status = 3; this.util.toast('交易完成 🎉', 'success'); })
+            .catch(err => this.util.toast((err && err.toString && err.toString()) || '操作失败', 'error')))
+          .catch(() => {});
+      },
       logout() {
-        if (!confirm('确定要退出登录吗？')) return;
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('userCache');
-        this.user = {};
-        this.$message.success('已退出登录');
-        setTimeout(() => { location.href = '/login.html'; }, 800);
+        // 原生 confirm 会阻塞页面且样式突兀，统一换成可点遮罩关闭的站内弹窗
+        this.util.closeAllPopups();
+        this.$confirm('确定要退出登录吗？', '退出登录',
+          { confirmButtonText: '退出登录', cancelButtonText: '再想想', type: 'warning',
+            closeOnClickModal: true, closeOnPressEscape: true })
+          .then(() => {
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('userCache');
+            this.user = {};
+            this.util.toast('已退出登录', 'success');
+            setTimeout(() => { location.href = '/login.html'; }, 800);
+          })
+          .catch(() => {});
       }
     }
   });

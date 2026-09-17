@@ -37,7 +37,11 @@ import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -260,6 +264,26 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     }
 
     @Override
+    public Result queryGoodsOfSeller(Long sellerId, Integer current) {
+        if (sellerId == null) {
+            return Result.fail("参数不合法");
+        }
+        int pageNo = (current == null || current < 1) ? 1 : current;
+        // 只返回在售商品（1在售 2已售 3下架 4交易中），已售/下架的不再展示
+        Page<Goods> page = query()
+                .eq("seller_id", sellerId)
+                .eq("status", 1)
+                .orderByDesc("create_time")
+                .page(new Page<>(pageNo, SystemConstants.MAX_PAGE_SIZE));
+
+        List<Goods> records = page.getRecords();
+        for (Goods goods : records) {
+            fillSellerInfo(goods);
+        }
+        return Result.ok(records, page.getTotal());
+    }
+
+    @Override
     @Transactional
     public Result deleteGoods(Long goodsId) {
         // 1. 获取登录用户
@@ -304,33 +328,8 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         if (x == null || y == null || radius == null) {
             return Result.fail("缺少定位参数");
         }
-        String key = geoKey(area);
-        GeoOperations<String, String> geo = stringRedisTemplate.opsForGeo();
-        Circle circle = new Circle(new Point(x, y), new Distance(radius, RedisGeoCommands.DistanceUnit.KILOMETERS));
-
-        List<Goods> result = new ArrayList<>();
-        try {
-            RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs
-                    .newGeoRadiusArgs().includeDistance().sortAscending();
-            GeoResults<RedisGeoCommands.GeoLocation<String>> results =
-                    geo.geoRadius(key, circle, args);
-            log.info("[GEO] 查询 key={}, 命中={}", key, results == null ? 0 : results.getContent().size());
-            if (results != null && results.getContent() != null) {
-                for (GeoResult<RedisGeoCommands.GeoLocation<String>> geoResult : results.getContent()) {
-                    String goodsId = geoResult.getContent().getName();
-                    Goods goods = getById(Long.valueOf(goodsId));
-                    if (goods != null && goods.getStatus() == 1) {
-                        double dist = geoResult.getDistance() == null ? 0 : geoResult.getDistance().getValue();
-                        goods.setDistance(dist); // 距离（公里）
-                        fillSellerInfo(goods);
-                        result.add(goods);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[GEO] 附近检索异常: {}", e.getMessage());
-        }
-        return Result.ok(result);
+        // 具体检索逻辑抽到 geoRadiusGoods，与 /goods/map 共用
+        return Result.ok(geoRadiusGoods(x, y, radius, area));
     }
 
     // ==================== 商品秒杀（由券秒杀迁移而来，二者完全独立） ====================
@@ -436,22 +435,201 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     }
 
     private void addGoodsGeo(Goods goods) {
+        if (goods == null || goods.getId() == null || goods.getX() == null || goods.getY() == null) {
+            return;
+        }
         try {
-            stringRedisTemplate.opsForGeo().add(
-                    geoKey(goods.getArea()),
-                    new Point(goods.getX(), goods.getY()),
-                    goods.getId().toString());
+            Point point = new Point(goods.getX(), goods.getY());
+            String member = goods.getId().toString();
+            // 同时写"校区"索引和"全部"索引：
+            // 只写校区索引的话，前端不带 area 查询（走 goods:geo:all）会永远查不到数据
+            stringRedisTemplate.opsForGeo().add(geoKey(goods.getArea()), point, member);
+            stringRedisTemplate.opsForGeo().add(geoKey(null), point, member);
         } catch (Exception e) {
             log.warn("[GEO] 写入坐标失败: goodsId={}, err={}", goods.getId(), e.getMessage());
         }
     }
 
     private void removeGoodsGeo(Goods goods) {
+        if (goods == null || goods.getId() == null) {
+            return;
+        }
         try {
-            stringRedisTemplate.opsForGeo().remove(geoKey(goods.getArea()), goods.getId().toString());
+            String member = goods.getId().toString();
+            stringRedisTemplate.opsForGeo().remove(geoKey(goods.getArea()), member);
+            stringRedisTemplate.opsForGeo().remove(geoKey(null), member);
         } catch (Exception e) {
             log.warn("[GEO] 移除坐标失败: goodsId={}, err={}", goods.getId(), e.getMessage());
         }
+    }
+
+    // ==================== 地图（Redis GEO） ====================
+
+    /**
+     * 全量重建 GEO 索引（以 DB 为准，只收在售商品）
+     * <p>
+     * 为什么需要：GEO 索引只在"经接口发布/编辑商品"时才写入，
+     * 直接跑 SQL 导入的种子数据不会进索引，于是「附近/地图」永远查不到东西。
+     * 启动时跑一次（见 GeoIndexInitializer）即可自愈，也可手动触发。
+     * @return 写入索引的商品数
+     */
+    @Override
+    public int rebuildGeoIndex() {
+        List<Goods> onSale = query().eq("status", 1).list();
+        // 先清掉旧 key，保证索引与 DB 完全一致（商品数很少，KEYS 可接受）
+        Set<String> oldKeys = stringRedisTemplate.keys(RedisConstants.GOODS_GEO_KEY + "*");
+        if (oldKeys != null && !oldKeys.isEmpty()) {
+            stringRedisTemplate.delete(oldKeys);
+        }
+        int count = 0;
+        for (Goods goods : onSale) {
+            if (goods.getX() == null || goods.getY() == null) {
+                continue;
+            }
+            addGoodsGeo(goods);
+            count++;
+        }
+        log.info("[GEO] 索引重建完成: 在售商品 {} 件，写入坐标 {} 件", onSale.size(), count);
+        return count;
+    }
+
+    @Override
+    public int syncGeoIndex() {
+        // GEO key 本质是 ZSet，成员就是商品 id；"all" 索引的基数应等于 DB 在售且有坐标的商品数
+        long dbCount = query().eq("status", 1).isNotNull("x").isNotNull("y").count();
+        Long indexed = stringRedisTemplate.opsForZSet().zCard(RedisConstants.GOODS_GEO_KEY + "all");
+        if (indexed != null && indexed > 0 && indexed == dbCount) {
+            log.info("[GEO] 索引已同步({} 条)，跳过重建", indexed);
+            return 0;
+        }
+        return rebuildGeoIndex();
+    }
+
+    /**
+     * 地图页数据：中心点 + 半径内商品 + 各校区在售数量
+     * <p>
+     * 不传 x/y 时自动用"在售商品坐标中位数"当校园中心，
+     * 前端的"校园视角"和"我的位置"共用这一个接口。
+     */
+    @Override
+    public Result queryMapGoods(Double x, Double y, Double radius, String area) {
+        boolean located = x != null && y != null;
+        double cx;
+        double cy;
+        if (located) {
+            cx = x;
+            cy = y;
+        } else {
+            double[] center = campusCenter();
+            cx = center[0];
+            cy = center[1];
+        }
+        double r = (radius == null || radius <= 0) ? 3D : radius;
+
+        // 半径检索走 Redis GEO（与 /goods/of/nearby 同一套逻辑）
+        List<Goods> goods = geoRadiusGoods(cx, cy, r, area);
+
+        Map<String, Object> centerPoint = new LinkedHashMap<>();
+        centerPoint.put("x", cx);
+        centerPoint.put("y", cy);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("center", centerPoint);
+        data.put("located", located);
+        data.put("radius", r);
+        data.put("count", goods.size());
+        data.put("areas", geoAreaCounts());
+        data.put("goods", goods);
+        return Result.ok(data);
+    }
+
+    /**
+     * 校园中心点：取在售商品坐标的<b>中位数</b>
+     * <p>
+     * 用中位数而不是平均值——种子里有 1 件商品的坐标在几百公里外（114.3/30.5），
+     * 平均值会被它带偏，中位数不受影响。
+     */
+    private double[] campusCenter() {
+        List<Goods> onSale = query().select("x", "y").eq("status", 1).list();
+        List<Double> xs = new ArrayList<>();
+        List<Double> ys = new ArrayList<>();
+        for (Goods goods : onSale) {
+            if (goods.getX() != null && goods.getY() != null) {
+                xs.add(goods.getX());
+                ys.add(goods.getY());
+            }
+        }
+        if (xs.isEmpty()) {
+            return new double[]{DEFAULT_X, DEFAULT_Y};
+        }
+        return new double[]{median(xs), median(ys)};
+    }
+
+    private double median(List<Double> values) {
+        List<Double> sorted = new ArrayList<>(values);
+        Collections.sort(sorted);
+        int size = sorted.size();
+        if (size % 2 == 1) {
+            return sorted.get(size / 2);
+        }
+        return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2;
+    }
+
+    /** 各校区在售数量（GEO key 基数，供前端做校区筛选；不含 all） */
+    private List<Map<String, Object>> geoAreaCounts() {
+        List<Map<String, Object>> areas = new ArrayList<>();
+        Set<String> keys = stringRedisTemplate.keys(RedisConstants.GOODS_GEO_KEY + "*");
+        if (keys == null || keys.isEmpty()) {
+            return areas;
+        }
+        for (String key : keys) {
+            String area = key.substring(RedisConstants.GOODS_GEO_KEY.length());
+            if ("all".equals(area)) {
+                continue;
+            }
+            Long size = stringRedisTemplate.opsForZSet().zCard(key);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("area", area);
+            item.put("count", size == null ? 0L : size);
+            areas.add(item);
+        }
+        areas.sort((a, b) -> Long.compare((Long) b.get("count"), (Long) a.get("count")));
+        return areas;
+    }
+
+    /**
+     * Redis GEO 半径检索（在售商品，按距离升序，回填 distance 公里数 + 卖家信息）
+     * <p>
+     * 抽出来给 /goods/of/nearby 与 /goods/map 共用，避免两处各写一遍。
+     */
+    private List<Goods> geoRadiusGoods(double x, double y, double radius, String area) {
+        List<Goods> result = new ArrayList<>();
+        GeoOperations<String, String> geo = stringRedisTemplate.opsForGeo();
+        Circle circle = new Circle(new Point(x, y),
+                new Distance(radius, RedisGeoCommands.DistanceUnit.KILOMETERS));
+        try {
+            RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs
+                    .newGeoRadiusArgs().includeDistance().sortAscending();
+            GeoResults<RedisGeoCommands.GeoLocation<String>> results =
+                    geo.geoRadius(geoKey(area), circle, args);
+            log.info("[GEO] 查询 key={}, 半径={}km, 命中={}", geoKey(area), radius,
+                    results == null ? 0 : results.getContent().size());
+            if (results != null && results.getContent() != null) {
+                for (GeoResult<RedisGeoCommands.GeoLocation<String>> geoResult : results.getContent()) {
+                    String goodsId = geoResult.getContent().getName();
+                    Goods goods = getById(Long.valueOf(goodsId));
+                    if (goods != null && goods.getStatus() == 1) {
+                        double dist = geoResult.getDistance() == null ? 0 : geoResult.getDistance().getValue();
+                        goods.setDistance(dist); // 距离（公里）
+                        fillSellerInfo(goods);
+                        result.add(goods);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[GEO] 附近检索异常: {}", e.getMessage());
+        }
+        return result;
     }
 
     // ==================== 缓存：逻辑过期 + 延迟双删 ====================

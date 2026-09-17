@@ -64,4 +64,18 @@ public interface IUserService extends IService<User> {
      * @return 操作结果
      */
     Result updatePassword(String oldPassword, String newPassword);
+
+    /**
+     * 用户卡片（他人主页用：昵称/头像/签名 + 粉丝数/关注数 + 我是否已关注）
+     * @param userId 目标用户id
+     * @return 用户卡片
+     */
+    Result userCard(Long userId);
+
+    /**
+     * 学长学姐专区：有在售商品的卖家列表
+     * @param current 页码
+     * @return 卖家卡片列表（含在售/已售商品数、粉丝数）
+     */
+    Result sellerList(Integer current);
 }

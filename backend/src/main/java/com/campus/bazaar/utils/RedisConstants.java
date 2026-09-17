@@ -25,7 +25,22 @@ public class RedisConstants {
     public static final String POST_LIKED_KEY = "post:liked:";
     public static final String FEED_KEY = "feed:";
     public static final String GOODS_GEO_KEY = "goods:geo:";
+
+    /**
+     * 签到 bitmap：sign:{userId}:{yyyyMM}
+     * <p>
+     * 值为 Bitmap，bit offset = 当月第几天 - 1（bit0 = 1 号），一个月最多占 31 bit（约 4 字节）。
+     * 同时保留 tb_sign 落库作为兜底（uk_user_date 唯一键），Redis 是签到记录的主存储。
+     */
     public static final String USER_SIGN_KEY = "sign:";
+    /** 签到 bitmap key 保留天数：跨月统计连续签到需读上个月，故保留 > 31 天，又避免 key 无限堆积 */
+    public static final long SIGN_BITMAP_TTL_DAYS = 62L;
+    /** 每连续签到多少天可获得 1 张运费券 */
+    public static final int SIGN_WEEK_DAYS = 7;
+    /** 累计获得的运费券张数（累计值，断签不清零） */
+    public static final String SIGN_WEEK_EARNED_KEY = "sign:week:earned:";
+    /** 已领取的运费券张数；可领取数 = earned - claimed */
+    public static final String SIGN_WEEK_CLAIMED_KEY = "sign:week:claimed:";
 
     /** 验证码发送频率限制（ZSet 滑动窗口，member=时间戳） */
     public static final String CODE_LIMIT_MIN_KEY = "login:code:limit:min:";

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>每日签到 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .sg-wrap { padding: 12px 16px 32px; }
+
+    /* ---------- 顶部签到卡 ---------- */
+    .sg-hero {
+      position: relative;
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      color: white;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      box-shadow: 0 6px 18px rgba(7,193,96,0.28);
+      overflow: hidden;
+    }
+    .sg-hero__deco {
+      position: absolute; right: -18px; top: -26px;
+      font-size: 96px; opacity: .14; line-height: 1;
+    }
+    .sg-hero__row { display: flex; align-items: flex-end; position: relative; }
+    .sg-hero__num { font-size: 40px; font-weight: 800; line-height: 1; }
+    .sg-hero__unit { font-size: 13px; margin-left: 4px; padding-bottom: 4px; opacity: .9; }
+    .sg-hero__sub { font-size: 12px; opacity: .9; margin-left: auto; padding-bottom: 4px; text-align: right; }
+
+    /* 7 天进度 */
+    .sg-week {
+      display: flex; align-items: center; gap: 6px;
+      margin: 16px 0 4px; position: relative;
+    }
+    .sg-week__dot {
+      flex: 1; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.28);
+    }
+    .sg-week__dot.on { background: #FFFFFF; }
+    .sg-week__hint { font-size: 11px; opacity: .92; margin-top: 8px; position: relative; }
+
+    .sg-btn {
+      width: 100%; margin-top: 14px;
+      padding: 13px; border: none; border-radius: 24px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      background: white; color: var(--primary-dark);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      position: relative;
+    }
+    .sg-btn:disabled { background: rgba(255,255,255,0.55); color: rgba(255,255,255,0.95); cursor: not-allowed; box-shadow: none; }
+
+    /* ---------- 通用卡片 ---------- */
+    .sg-card {
+      background: white; border-radius: 16px;
+      padding: 16px; margin-top: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.045);
+    }
+    .sg-card__title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 15px; font-weight: 700; margin-bottom: 4px;
+    }
+    .sg-card__title .sub { font-size: 11px; font-weight: 400; color: var(--text-3); margin-left: auto; }
+
+    /* ---------- 运费券卡 ---------- */
+    .sg-coupon {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px dashed var(--primary);
+      background: linear-gradient(135deg, #F2FCF7, #FFFFFF);
+      border-radius: 14px; padding: 14px; margin-top: 10px;
+    }
+    .sg-coupon__val {
+      flex-shrink: 0; width: 62px; text-align: center;
+      color: var(--primary-dark);
+    }
+    .sg-coupon__val b { font-size: 26px; }
+    .sg-coupon__val span { font-size: 12px; }
+    .sg-coupon__info { flex: 1; min-width: 0; }
+    .sg-coupon__name { font-size: 14px; font-weight: 700; }
+    .sg-coupon__rule { font-size: 11px; color: var(--text-3); margin-top: 4px; line-height: 1.5; }
+    .sg-claim {
+      flex-shrink: 0; border: none; border-radius: 18px;
+      padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+    }
+    .sg-claim:disabled { background: #E5E7EB; color: var(--text-3); cursor: not-allowed; }
+
+    /* ---------- 日历 ---------- */
+    .sg-cal__head {
+      display: flex; align-items: center; justify-content: center;
+      gap: 18px; margin: 6px 0 12px;
+    }
+    .sg-cal__nav {
+      width: 28px; height: 28px; line-height: 26px; text-align: center;
+      border-radius: 50%; background: var(--primary-light);
+      color: var(--primary-dark); cursor: pointer; font-size: 14px; user-select: none;
+    }
+    .sg-cal__nav.disabled { background: #F3F4F6; color: #D1D5DB; cursor: not-allowed; }
+    .sg-cal__month { font-size: 14px; font-weight: 700; min-width: 96px; text-align: center; }
+
+    .sg-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .sg-cal__week { font-size: 11px; color: var(--text-3); text-align: center; padding: 4px 0; }
+    .sg-cal__cell {
+      position: relative; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--text-2); background: #FAFAFB;
+    }
+    .sg-cal__cell.blank { background: transparent; }
+    .sg-cal__cell.signed {
+      background: var(--primary-light); color: var(--primary-dark); font-weight: 700;
+    }
+    .sg-cal__cell.today {
+      box-shadow: inset 0 0 0 2px var(--primary);
+      color: var(--primary-dark); font-weight: 700;
+    }
+    .sg-cal__cell.future { color: #D1D5DB; background: transparent; }
+    .sg-cal__tick {
+      position: absolute; right: 3px; top: 2px;
+      font-size: 9px; color: var(--primary);
+    }
+
+    /* ---------- 我的券列表 ---------- */
+    .sg-list__item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 0; border-bottom: 1px solid #F3F4F6;
+    }
+    .sg-list__item:last-child { border-bottom: none; }
+    .sg-list__icon { font-size: 20px; }
+    .sg-list__body { flex: 1; min-width: 0; }
+    .sg-list__name { font-size: 13px; font-weight: 600; }
+    .sg-list__time { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .sg-list__tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: var(--primary-light); color: var(--primary-dark);
+    }
+    .sg-empty { text-align: center; padding: 22px 0; color: var(--text-3); font-size: 13px; }
+    .sg-empty__icon { font-size: 30px; margin-bottom: 8px; }
+    .sg-foot { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 18px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">每日签到</div>
+    <div class="app-bar__action"></div>
+  </div>
+
+  <div class="sg-wrap" v-if="!loading">
+
+    <!-- 签到主卡 -->
+    <div class="sg-hero">
+      <div class="sg-hero__deco">📅</div>
+      <div class="sg-hero__row">
+        <span class="sg-hero__num">{{streak}}</span>
+        <span class="sg-hero__unit">天连续签到</span>
+        <span class="sg-hero__sub">本月已签 {{signedCount}} 天</span>
+      </div>
+
+      <div class="sg-week">
+        <div class="sg-week__dot" v-for="n in weekDays" :key="n"
+             :class="{on: n <= weekProgress}"></div>
+      </div>
+      <div class="sg-week__hint">
+        <template v-if="claimable > 0">
+          🎉 有 {{claimable}} 张运费券待领取，点下方「领取」即可到手
+        </template>
+        <template v-else-if="todaySigned">
+          今天已签到，再签 {{nextRewardDays}} 天可领一张运费券
+        </template>
+        <template v-else>
+          今天还没签到，再签 {{nextRewardDays}} 天可领运费券
+        </template>
+      </div>
+
+      <button class="sg-btn" :disabled="todaySigned || signing || !isCurrentMonth" @click="doSign">
+        {{ todaySigned ? '今日已签到 ✓'
+          : (!isCurrentMonth ? '请切换到本月签到'
+          : (signing ? '签到中...' : '立即签到')) }}
+      </button>
+    </div>
+
+    <!-- 运费券 -->
+    <div class="sg-card">
+      <div class="sg-card__title">
+        🎫 签到运费券
+        <span class="sub">已领 {{totalClaimed}} 张</span>
+      </div>
+      <div class="sg-coupon" v-if="coupon">
+        <div class="sg-coupon__val">
+          <b>{{coupon.actualValue}}</b><span>元</span>
+        </div>
+        <div class="sg-coupon__info">
+          <div class="sg-coupon__name">{{coupon.title}}</div>
+          <div class="sg-coupon__rule">{{coupon.rules}}</div>
+        </div>
+        <button class="sg-claim" :disabled="claimable <= 0 || claiming" @click="doClaim">
+          {{ claimable > 0 ? ('领取 (' + claimable + ')') : (claiming ? '领取中...' : '不可领取') }}
+        </button>
+      </div>
+      <div class="sg-coupon" v-else style="border-color:#E5E7EB; background:#FAFAFB">
+        <div class="sg-coupon__info" style="color:var(--text-3)">
+          签到运费券模板未配置，请先执行 db/upgrade-0917-sign-coupon.sql
+        </div>
+      </div>
+      <div class="sg-coupon__rule" style="margin-top:10px">
+        规则：连续签到每满 {{weekDays}} 天，获得 1 张运费券的领取资格（累计 {{totalEarned}} 张，已领 {{totalClaimed}} 张，待领 {{claimable}} 张）。
+      </div>
+    </div>
+
+    <!-- 签到记录日历 -->
+    <div class="sg-card">
+      <div class="sg-card__title">
+        📆 签到记录
+        <span class="sub">本月共 {{signedCount}} 天</span>
+      </div>
+      <div class="sg-cal__head">
+        <div class="sg-cal__nav" :class="{disabled: !canPrev}" @click="prevMonth">‹</div>
+        <div class="sg-cal__month">{{year}} 年 {{month}} 月</div>
+        <div class="sg-cal__nav" :class="{disabled: !canNext}" @click="nextMonth">›</div>
+      </div>
+      <div class="sg-cal__grid">
+        <div class="sg-cal__week" v-for="w in weekNames" :key="w">{{w}}</div>
+        <div class="sg-cal__cell"
+             v-for="c in calendarCells" :key="c.key"
+             :class="{blank: c.blank, signed: c.signed, today: c.today, future: c.future}">
+          <template v-if="!c.blank">
+            <span>{{c.day}}</span>
+            <span class="sg-cal__tick" v-if="c.signed">✓</span>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- 我的运费券 -->
+    <div class="sg-card">
+      <div class="sg-card__title">🎁 我的运费券</div>
+      <div v-if="coupons.length">
+        <div class="sg-list__item" v-for="c in coupons" :key="c.id">
+          <div class="sg-list__icon">🎫</div>
+          <div class="sg-list__body">
+            <div class="sg-list__name">{{c.title}} · 抵扣 {{c.actualValue}} 元</div>
+            <div class="sg-list__time">领取时间：{{formatTime(c.createTime)}}</div>
+          </div>
+          <div class="sg-list__tag">{{statusText(c.status)}}</div>
+        </div>
+      </div>
+      <div class="sg-empty" v-else>
+        <div class="sg-empty__icon">🎫</div>
+        还没有运费券，连续签到满 {{weekDays}} 天来领第一张吧
+      </div>
+    </div>
+
+    <div class="sg-foot">
+      每日 00:00 后可签到，连续签到断签会重新计算<br>
+      签到记录保存在 Redis Bitmap（sign:{用户ID}:{年月}），按月自动过期
+    </div>
+  </div>
+
+  <div v-else style="text-align:center; padding:60px 0; color:var(--text-3); font-size:13px">加载中...</div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      loading: true,
+      signing: false,
+      claiming: false,
+      // 日历
+      year: 0,
+      month: 0,
+      daysInMonth: 31,
+      firstWeekday: 0,
+      signedDays: [],
+      signedCount: 0,
+      isCurrentMonth: true,
+      todayDay: new Date().getDate(),
+      // 汇总
+      streak: 0,
+      todaySigned: false,
+      nextRewardDays: 7,
+      weekDays: 7,
+      claimable: 0,
+      totalEarned: 0,
+      totalClaimed: 0,
+      coupon: null,
+      coupons: [],
+      weekNames: ['日', '一', '二', '三', '四', '五', '六']
+    },
+    computed: {
+      /** 本周期(7天)已签进度：连续 7 天时满格展示 */
+      weekProgress() {
+        if (this.streak <= 0) return 0;
+        const rem = this.streak % this.weekDays;
+        return rem === 0 ? this.weekDays : rem;
+      },
+      /** 日历格子：前置空位 + 当月每一天 */
+      calendarCells() {
+        const cells = [];
+        for (let i = 0; i < this.firstWeekday; i++) {
+          cells.push({ key: 'blank-' + i, blank: true });
+        }
+        for (let d = 1; d <= this.daysInMonth; d++) {
+          cells.push({
+            key: 'day-' + d,
+            blank: false,
+            day: d,
+            signed: this.signedDays.indexOf(d) > -1,
+            today: this.isCurrentMonth && d === this.todayDay,
+            future: this.isCurrentMonth ? d > this.todayDay : false
+          });
+        }
+        return cells;
+      },
+      /** 不能翻到未来月份 */
+      canNext() {
+        if (this.isCurrentMonth) return false;
+        const now = new Date();
+        return this.year < now.getFullYear() ||
+          (this.year === now.getFullYear() && this.month < now.getMonth() + 1);
+      },
+      canPrev() {
+        // 允许最多回溯 12 个月（Bitmap 保留 62 天，更早的记录无意义）
+        const now = new Date();
+        const diff = (now.getFullYear() - this.year) * 12 + (now.getMonth() + 1 - this.month);
+        return diff < 12;
+      }
+    },
+    created() {
+      const now = new Date();
+      this.year = now.getFullYear();
+      this.month = now.getMonth() + 1;
+      this.query();
+      this.queryCoupons();
+    },
+    methods: {
+      goBack() { location.href = '/info.html'; },
+
+      /** 拉取签到记录 + 汇总 + 我的券 */
+      query() {
+        this.loading = true;
+        axios.get('/sign/records', { params: { year: this.year, month: this.month } })
+          .then(({ data }) => {
+            this.daysInMonth = data.daysInMonth;
+            this.firstWeekday = data.firstWeekday;
+            this.signedDays = data.signedDays || [];
+            this.signedCount = data.signedCount || 0;
+            this.isCurrentMonth = !!data.isCurrentMonth;
+            this.todaySigned = !!data.todaySigned;
+            this.streak = data.streak || 0;
+            this.nextRewardDays = data.nextRewardDays;
+            this.weekDays = data.weekDays || 7;
+            this.claimable = data.claimable || 0;
+            this.totalEarned = data.totalEarned || 0;
+            this.totalClaimed = data.totalClaimed || 0;
+            this.coupon = data.coupon || null;
+            this.loading = false;
+          })
+          .catch(err => {
+            this.loading = false;
+            this.$message.error(err && err.toString ? err.toString() : '签到记录加载失败');
+          });
+      },
+
+      queryCoupons() {
+        axios.get('/sign/coupons')
+          .then(({ data }) => this.coupons = data || [])
+          .catch(() => this.coupons = []);
+      },
+
+      /** 签到 */
+      doSign() {
+        if (this.todaySigned || this.signing) return;
+        this.signing = true;
+        axios.post('/sign')
+          .then(({ data }) => {
+            this.signing = false;
+            this.$message.success('签到成功，已连续签到 ' + data.streak + ' 天');
+            if (data.rewarded) {
+              setTimeout(() => this.$message.success('🎉 连续签到满 ' + this.weekDays + ' 天，可领取 1 张运费券'), 300);
+            }
+            this.query();
+          })
+          .catch(err => {
+            this.signing = false;
+            this.$message.error(err && err.toString ? err.toString() : '签到失败');
+            // 已签到等情况刷新一次，保证界面与服务端一致
+            this.query();
+          });
+      },
+
+      /** 领取运费券 */
+      doClaim() {
+        if (this.claimable <= 0 || this.claiming) return;
+        this.claiming = true;
+        axios.post('/sign/coupon')
+          .then(({ data }) => {
+            this.claiming = false;
+            this.$message.success('🎉 已领取「' + data.title + '」，抵扣 ' + data.actualValue + ' 元');
+            this.query();
+            this.queryCoupons();
+          })
+          .catch(err => {
+            this.claiming = false;
+            this.$message.error(err && err.toString ? err.toString() : '领取失败');
+            this.query();
+          });
+      },
+
+      prevMonth() {
+        if (!this.canPrev) return;
+        let y = this.year, m = this.month - 1;
+        if (m === 0) { m = 12; y--; }
+        this.year = y; this.month = m;
+        this.query();
+      },
+
+      nextMonth() {
+        if (!this.canNext) return;
+        let y = this.year, m = this.month + 1;
+        if (m === 13) { m = 1; y++; }
+        this.year = y; this.month = m;
+        this.query();
+      },
+
+      formatTime(t) {
+        if (!t) return '-';
+        return t.replace('T', ' ').slice(0, 16);
+      },
+
+      statusText(s) {
+        return s === 1 ? '未使用' : (s === 2 ? '已使用' : '已领取');
+      }
+    }
+  });
+</script>
+</body>
+</html>

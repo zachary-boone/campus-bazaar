@@ -54,11 +54,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login/password",
                         // 仅放行 GET /user/info/{id}（查看他人主页）；/user/info 的 PUT（修改资料）需登录
                         "/user/info/*",
+                        "/user/card/*",                   // 用户卡片（他人主页：昵称/头像/计数）
+                        "/user/sellers",                  // 学长学姐专区：卖家列表
+                        "/goods/of/seller/*",             // 某卖家的在售商品
+                        "/post/of/user/*",                // 某用户发布的帖子
                         // ===== 校园小黑市公开接口（无需登录） =====
                         "/goods/category/list",          // 商品分类
                         "/goods/of/type",                 // 按分类查商品
                         "/goods/of/name",                 // 按名称搜索
                         "/goods/of/nearby",               // 附近商品
+                        "/goods/map",                     // 地图页数据（中心点+半径内商品+校区统计）
                         "/goods/hot",                     // 热榜
                         "/goods/{id}",                     // 商品详情
                         "/post/hot",                      // 热门帖子
@@ -71,6 +76,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/coupon/list/{goodsId}",         // 优惠券列表
                         "/coupon/{id}",                   // 券详情
                         "/coupon/seckill/{id}",           // 秒杀状态
+                        "/follow/counts/*",               // 关注数/粉丝数（个人中心、他人主页）
+                        "/follow/following/*",            // TA 关注的人
+                        "/follow/followers/*",            // TA 的粉丝
                         "/common/{id}",                   // 公共图片
                         "/error",
                         "/favicon.ico",

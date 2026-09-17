@@ -82,6 +82,27 @@ public class UserController {
         return Result.ok(info);
     }
 
+    /**
+     * 用户卡片（他人主页用）：昵称/头像/签名 + 粉丝数/关注数 + 我是否已关注
+     * <p>
+     * 与 /user/info/{id} 的区别：那个读 tb_user_info（扩展资料，可能没数据），
+     * 这个以 tb_user 为准并带上关注关系，保证任何人都有昵称头像可展示。
+     */
+    @GetMapping("/card/{id}")
+    public Result card(@PathVariable("id") Long userId) {
+        return userService.userCard(userId);
+    }
+
+    /**
+     * 学长学姐专区：有在售商品的卖家列表（按在售商品数倒序）
+     * @param current 页码
+     * @return 卖家卡片列表
+     */
+    @GetMapping("/sellers")
+    public Result sellers(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return userService.sellerList(current);
+    }
+
     /** 修改用户基本信息 - 必须登录 */
     @PutMapping("/info")
     public Result updateUserInfo(@RequestBody UserInfo userInfo) {

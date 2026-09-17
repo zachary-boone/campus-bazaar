@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>校园地图 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    html, body { height: 100%; }
+    body { background: var(--bg); }
+
+    .mp-page { display: flex; flex-direction: column; height: calc(100vh - 112px); }
+
+    /* 顶部筛选条 */
+    .mp-bar {
+      padding: 10px 16px 8px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      flex-shrink: 0;
+    }
+    .mp-bar__row { display: flex; align-items: center; gap: 8px; }
+    .mp-bar__row + .mp-bar__row { margin-top: 8px; }
+    .mp-bar__label { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+    .mp-chip {
+      font-size: 12px; padding: 4px 10px; border-radius: 12px;
+      background: #F3F4F6; color: var(--text-2); cursor: pointer;
+      white-space: nowrap;
+    }
+    .mp-chip.active { background: var(--primary); color: white; font-weight: 600; }
+    .mp-chips { display: flex; gap: 6px; overflow-x: auto; }
+    .mp-locate {
+      margin-left: auto; flex-shrink: 0;
+      font-size: 12px; padding: 5px 10px; border-radius: 12px; border: none;
+      background: var(--primary-light); color: var(--primary-dark);
+      font-weight: 600; cursor: pointer;
+    }
+    .mp-locate.on { background: var(--primary); color: white; }
+
+    /* 地图容器 */
+    .mp-stage {
+      position: relative; flex: 1; min-height: 240px;
+      overflow: hidden; background: #EDF3EC;
+      touch-action: none;
+    }
+    .mp-svg { width: 100%; height: 100%; display: block; cursor: grab; }
+    .mp-svg.dragging { cursor: grabbing; }
+    .mp-zoom {
+      position: absolute; right: 12px; bottom: 96px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .mp-zoom button {
+      width: 36px; height: 36px; border-radius: 10px; border: none;
+      background: white; color: var(--text-1); font-size: 18px; font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.14); cursor: pointer;
+    }
+    .mp-zoom button:active { background: #F3F4F6; }
+    .mp-legend {
+      position: absolute; left: 12px; top: 12px;
+      background: rgba(255,255,255,0.92); border-radius: 10px;
+      padding: 8px 10px; font-size: 11px; color: var(--text-2); line-height: 1.7;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .mp-hint {
+      position: absolute; left: 12px; right: 12px; bottom: 12px;
+      background: rgba(255,255,255,0.95); border-radius: 12px;
+      padding: 9px 12px; font-size: 11px; color: var(--text-2); line-height: 1.6;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .mp-hint b { color: var(--primary-dark); }
+
+    /* 选中商品卡 */
+    .mp-card {
+      position: absolute; left: 12px; right: 12px; bottom: 12px;
+      background: white; border-radius: 14px; padding: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+      display: flex; gap: 12px; align-items: center;
+    }
+    .mp-card__img {
+      width: 62px; height: 62px; border-radius: 10px; object-fit: cover;
+      background: #F0F0F0; flex-shrink: 0;
+    }
+    .mp-card__body { flex: 1; min-width: 0; }
+    .mp-card__name {
+      font-size: 14px; font-weight: 700;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .mp-card__meta { font-size: 11px; color: var(--text-3); margin-top: 4px; line-height: 1.6; }
+    .mp-card__price { color: var(--accent); font-weight: 700; }
+    .mp-card__go {
+      flex-shrink: 0; border: none; border-radius: 18px; padding: 9px 16px;
+      font-size: 13px; font-weight: 700; color: white; cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    }
+    .mp-card__close {
+      position: absolute; top: 6px; right: 10px;
+      font-size: 16px; color: var(--text-3); cursor: pointer; line-height: 1;
+    }
+    .mp-loading {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.6); font-size: 13px; color: var(--text-2);
+    }
+    .mp-empty {
+      position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%);
+      text-align: center; font-size: 13px; color: var(--text-3); line-height: 1.8;
+    }
+    .mp-empty__icon { font-size: 32px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">校园地图</div>
+    <div class="app-bar__action"></div>
+  </div>
+
+  <div class="mp-page">
+    <!-- 筛选条 -->
+    <div class="mp-bar">
+      <div class="mp-bar__row">
+        <span class="mp-bar__label">范围</span>
+        <div class="mp-chips">
+          <span class="mp-chip" v-for="r in radiusOptions" :key="r.v"
+                :class="{active: radius === r.v}" @click="setRadius(r.v)">{{ r.label }}</span>
+        </div>
+      </div>
+      <div class="mp-bar__row">
+        <span class="mp-bar__label">校区</span>
+        <div class="mp-chips">
+          <span class="mp-chip" :class="{active: !area}" @click="setArea('')">
+            全部 ({{ totalCount }})
+          </span>
+          <span class="mp-chip" v-for="a in areas" :key="a.area"
+                :class="{active: area === a.area}" @click="setArea(a.area)">
+            {{ a.area }} ({{ a.count }})
+          </span>
+        </div>
+        <button class="mp-locate" :class="{on: located}" @click="locateMe">
+          {{ located ? '📍 我的位置' : '📍 定位' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- 地图 -->
+    <div class="mp-stage" ref="stage">
+      <svg class="mp-svg" :class="{dragging: dragging}" viewBox="0 0 360 520"
+           @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag"
+           @touchstart="startDrag" @touchmove="onDrag" @touchend="endDrag"
+           @click="onMapClick"
+           @wheel.prevent="onWheel">
+
+        <!-- 校园示意图底色（跟着缩放/平移一起动） -->
+        <rect x="0" y="0" width="360" height="520" fill="#EDF3EC"/>
+        <g>
+          <rect v-for="b in blocks" :key="b.name"
+                :x="plotMeter(b.mx, b.my).x" :y="plotMeter(b.mx, b.my).y"
+                :width="Math.max(6, b.w * scale)" :height="Math.max(6, b.h * scale)"
+                :fill="b.color" stroke="#CBD5C6" stroke-width="1" rx="4"/>
+          <text v-for="b in blocks" :key="'t' + b.name"
+                :x="plotMeter(b.mx, b.my).x + (b.w * scale) / 2"
+                :y="plotMeter(b.mx, b.my).y + (b.h * scale) / 2"
+                text-anchor="middle" font-size="10" fill="#8A9A85"
+                style="pointer-events:none">{{ b.name }}</text>
+        </g>
+
+        <!-- 距离圈 -->
+        <g v-for="ring in rings" :key="'r' + ring">
+          <circle :cx="origin.x" :cy="origin.y" :r="ring * 1000 * scale"
+                  fill="none" stroke="#B9CDB4" stroke-width="1" stroke-dasharray="5 6"
+                  v-if="ring * 1000 * scale > 14"/>
+          <text :x="origin.x + 4" :y="origin.y - ring * 1000 * scale + 12"
+                font-size="9" fill="#9AAE95" v-if="ring * 1000 * scale > 24">
+            {{ ring }}km
+          </text>
+        </g>
+
+        <!-- 我的位置 -->
+        <g v-if="located">
+          <circle :cx="myPoint.x" :cy="myPoint.y" r="14" fill="rgba(64,158,255,0.25)" v-if="inView(myPoint)"/>
+          <circle :cx="myPoint.x" :cy="myPoint.y" r="6" fill="#409EFF" stroke="#fff" stroke-width="2"
+                  v-if="inView(myPoint)"/>
+        </g>
+        <!-- 校园中心 -->
+        <g v-else>
+          <circle :cx="origin.x" :cy="origin.y" r="5" fill="#909399" stroke="#fff" stroke-width="2"/>
+        </g>
+
+        <!-- 商品标记：圆点就是热区（所见即所点，不做隐形放大热区，
+             否则大热区会盖住邻居的圆点，又会"点 A 选中 B"） -->
+        <g v-for="g in sortedGoods" :key="g.id" style="cursor:pointer" @click.stop="select(g)">
+          <circle :cx="plot(g).x" :cy="plot(g).y" r="9"
+                  :fill="selected && selected.id === g.id ? '#FF6B6B' : '#07C160'"
+                  stroke="#fff" stroke-width="2"/>
+          <text :x="plot(g).x" :y="plot(g).y + 3.5" text-anchor="middle"
+                font-size="8" fill="#fff" style="pointer-events:none">¥</text>
+        </g>
+
+        <!-- 商品名称标签：白底胶囊 + 引线 + 防重叠
+             注意：标签必须自己可点击（@click 绑到 l.goods）。
+             之前标签是 pointer-events:none 的，而密集处"上面那件的标签"会正好
+             压在"下面那件的圆点"上，点击会穿透到邻居的圆点 → 选中另一个商品。 -->
+        <g v-for="l in labels" :key="'lb' + l.id" style="cursor:pointer"
+           @click.stop="select(l.goods)">
+          <line :x1="l.p.x" :y1="l.rect.y + 13" :x2="l.p.x" :y2="l.p.y - 8"
+                :stroke="l.selected ? '#FF6B6B' : '#AFC7A9'" stroke-width="0.8"/>
+          <rect :x="l.rect.x" :y="l.rect.y" :width="l.rect.w" height="13" rx="6.5"
+                :fill="l.selected ? 'rgba(255,107,107,0.96)' : 'rgba(255,255,255,0.94)'"
+                :stroke="l.selected ? '#FF6B6B' : '#D5E2D1'" stroke-width="0.8"/>
+          <text :x="l.p.x" :y="l.rect.y + 9.5" text-anchor="middle"
+                font-size="8.5" :fill="l.selected ? '#fff' : '#2F3B2C'"
+                style="pointer-events:none">{{ l.text }}</text>
+        </g>
+      </svg>
+
+      <div class="mp-zoom">
+        <button @click="zoomBy(1.4)" title="放大">＋</button>
+        <button @click="zoomBy(1 / 1.4)" title="缩小">－</button>
+        <button @click="resetView" title="回到中心" style="font-size:13px">⦿</button>
+      </div>
+
+      <div class="mp-legend">
+        <div>🟢 范围内 {{ goods.length }} 件 · 全站 {{ totalCount }} 件</div>
+        <div v-if="located">🔵 我的位置</div>
+        <div v-else>⚫ 校园中心</div>
+        <div>缩放 <b>{{ zoom.toFixed(1) }}x</b> · 可拖动</div>
+      </div>
+
+      <div class="mp-loading" v-if="loading">地图加载中…</div>
+
+      <div class="mp-empty" v-if="!loading && !goods.length">
+        <div class="mp-empty__icon">🗺️</div>
+        {{ radiusLabel }}内暂无在售商品<br>试试放大范围或切换校区
+      </div>
+
+      <!-- 定位提示 / 说明 -->
+      <div class="mp-hint" v-if="!selected && !loading">
+        <template v-if="located">
+          已定位到你的位置<span v-if="myDistanceToCampus != null">
+            （距校园中心约 <b>{{ myDistanceToCampus }} km</b>）</span>。
+          <template v-if="myDistanceToCampus > 20">
+            你当前不在校园范围内，可点下方商品卡或切回「定位」前的校园视角查看在售好物。
+          </template>
+        </template>
+        <template v-else>
+          当前为<b>校园视角</b>（中心点在售商品最密集处）。点击「📍 定位」可查看自己的位置。
+        </template>
+      </div>
+
+      <!-- 选中商品 -->
+      <div class="mp-card" v-if="selected">
+        <span class="mp-card__close" @click="selected = null">✕</span>
+        <img class="mp-card__img" :src="(selected.images || '').split(',')[0] || '/imgs/goods/0.svg'" @error="onImgErr">
+        <div class="mp-card__body">
+          <div class="mp-card__name">{{ selected.name }}</div>
+          <div class="mp-card__meta">
+            <span class="mp-card__price">¥{{ selected.price }}</span>
+            · {{ selected.sellerName || '校园同学' }}<br>
+            {{ selected.area || '校园' }} · {{ selected.address || '面谈' }}
+            <template v-if="selected.distance != null">
+              · 距中心 {{ fmtDistance(selected.distance) }}
+            </template>
+          </div>
+        </div>
+        <button class="mp-card__go" @click="toBuy(selected.id)">去购买</button>
+      </div>
+    </div>
+  </div>
+
+  <foot-bar :active-btn="2"></foot-bar>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/footer.js"></script>
+<script>
+  const VIEW_W = 360, VIEW_H = 520;
+  const METERS_PER_DEGREE = 111320; // 纬度 1 度约 111.32km
+
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      loading: true,
+      // 数据
+      center: { x: 120.145, y: 30.324 },   // 地图中心（经纬度）
+      goods: [],
+      areas: [],
+      radius: 1,
+      area: '',
+      located: false,
+      myLoc: null,                          // 我的经纬度（定位成功后才有）
+      // 视图
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      dragging: false,
+      dragged: false,
+      dragStart: null,
+      viewScale: 1,                         // 屏幕px → viewBox单位 的比例（拖拽时用）
+      selected: null,
+      radiusOptions: [
+        { v: 0.5, label: '500m' },
+        { v: 1, label: '1km' },
+        { v: 3, label: '3km' },
+        { v: 10, label: '10km' }
+      ],
+      rings: [0.5, 1, 2],
+      // 校园示意图（单位：米，相对中心点）
+      blocks: [
+        { name: '宿舍区', mx: -900, my: 620, w: 640, h: 420, color: '#DFF0DA' },
+        { name: '教学楼', mx: 180, my: 520, w: 720, h: 360, color: '#DDE9F7' },
+        { name: '图书馆', mx: -220, my: -120, w: 520, h: 300, color: '#FBF0DA' },
+        { name: '操场', mx: 620, my: -720, w: 820, h: 520, color: '#EFE1F2' },
+        { name: '食堂', mx: -950, my: -430, w: 420, h: 300, color: '#FBE3E3' }
+      ]
+    },
+    computed: {
+      /** 每米多少 viewBox 单位：让当前半径正好铺满短边，再乘缩放手势 */
+      scale() {
+        const fit = (Math.min(VIEW_W, VIEW_H) / 2 - 24) / (this.radius * 1000);
+        return fit * this.zoom;
+      },
+      origin() {
+        return { x: VIEW_W / 2 + this.panX, y: VIEW_H / 2 + this.panY };
+      },
+      myPoint() {
+        if (!this.myLoc) return { x: 0, y: 0 };
+        return this.plotLatLng(this.myLoc.x, this.myLoc.y);
+      },
+      totalCount() {
+        return this.areas.reduce((sum, a) => sum + (a.count || 0), 0);
+      },
+      radiusLabel() {
+        const hit = this.radiusOptions.find(r => r.v === this.radius);
+        return hit ? hit.label : (this.radius + 'km');
+      },
+      /** 我的位置距校园中心多少公里（用于提示"不在校园范围内"） */
+      myDistanceToCampus() {
+        if (!this.myLoc) return null;
+        return Math.round(this.haversine(this.myLoc.x, this.myLoc.y, this.center.x, this.center.y) * 10) / 10;
+      },
+      /** 标记绘制顺序：选中的最后画（在最上层） */
+      sortedGoods() {
+        const sel = this.selected;
+        if (!sel) return this.goods;
+        return this.goods.slice().sort((a, b) => (a.id === sel.id ? 1 : 0) - (b.id === sel.id ? 1 : 0));
+      },
+      /**
+       * 名称标签（已做防重叠）
+       * <p>
+       * 密集处名称会糊成一团看不清，所以按 y 从上到下贪心摆放：
+       * 和已放下的标签矩形相交就跳过不画；选中项优先占位、永远显示。
+       * 缩放/拖动时会自动重算，放大后能显示出更多标签。
+       */
+      labels() {
+        const placed = [];
+        const out = [];
+        // 8.5px 中文约 8.6px/字（标题截断到 5 字），再加内边距
+        const widthOf = (text) => text.length * 8.6 + 9;
+
+        const selected = this.selected && this.goods.find(g => g.id === this.selected.id);
+        if (selected) {
+          const p = this.plot(selected);
+          const text = this.labelText(selected.name);
+          const w = widthOf(text);
+          const rect = { x: p.x - w / 2, y: p.y - 26, w: w, h: 13 };
+          // goods 带上原始数据，标签本身可点击时才能选对商品
+          out.push({ id: selected.id, p: p, rect: rect, text: text, selected: true, goods: selected });
+          placed.push(rect);
+        }
+
+        const rest = this.goods
+          .filter(g => !selected || g.id !== selected.id)
+          .map(g => ({ g: g, p: this.plot(g) }))
+          .filter(item => this.inView(item.p))
+          .sort((a, b) => a.p.y - b.p.y);
+
+        for (const item of rest) {
+          const text = this.labelText(item.g.name);
+          const w = widthOf(text);
+          const rect = { x: item.p.x - w / 2, y: item.p.y - 26, w: w, h: 13 };
+          const hit = placed.some(r =>
+            rect.x < r.x + r.w && rect.x + rect.w > r.x &&
+            rect.y < r.y + r.h && rect.y + rect.h > r.y);
+          if (hit) continue;
+          out.push({ id: item.g.id, p: item.p, rect: rect, text: text, selected: false, goods: item.g });
+          placed.push(rect);
+        }
+        return out;
+      }
+    },
+    created() {
+      // 校区过滤（首页「楼层定位」点某个校区跳过来）
+      const areaParam = util.getUrlParam('area');
+      if (areaParam) this.area = areaParam;
+      // 优先用 URL 上的坐标（从商品详情等页面带过来）
+      const x = parseFloat(util.getUrlParam('x'));
+      const y = parseFloat(util.getUrlParam('y'));
+      if (!isNaN(x) && !isNaN(y)) {
+        this.myLoc = { x: x, y: y };
+        this.located = true;
+      }
+      this.query();
+    },
+    methods: {
+      goBack() { history.length > 1 ? history.back() : (location.href = '/index.html'); },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      shortName(name) { return (name || '').length > 6 ? name.slice(0, 6) + '…' : (name || ''); },
+      /** 地图上的标签比列表更短（截断到 5 字），才能在密集处放下更多标签 */
+      labelText(name) {
+        const n = name || '';
+        return n.length > 5 ? n.slice(0, 5) + '…' : n;
+      },
+      fmtDistance(km) {
+        if (km == null) return '';
+        return km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km';
+      },
+
+      // ==================== 数据 ====================
+      /** 拉地图数据：有我的位置就以我为中心，否则用校园中心 */
+      query() {
+        this.loading = true;
+        const params = { radius: this.radius };
+        if (this.area) params.area = this.area;
+        if (this.located && this.myLoc) {
+          params.x = this.myLoc.x;
+          params.y = this.myLoc.y;
+        }
+        axios.get('/goods/map', { params: params })
+          .then(({ data }) => {
+            const d = data || {};
+            if (d.center) this.center = { x: d.center.x, y: d.center.y };
+            this.goods = d.goods || [];
+            this.areas = d.areas || [];
+            this.selected = null;
+          })
+          .catch(err => {
+            this.goods = [];
+            this.util.toast(err && err.toString ? err.toString() : '地图数据加载失败', 'error');
+          })
+          .then(() => { this.loading = false; });
+      },
+      setRadius(v) {
+        if (this.radius === v) return;
+        this.radius = v;
+        this.resetView();
+        this.query();
+      },
+      setArea(a) {
+        if (this.area === a) return;
+        this.area = a;
+        this.query();
+      },
+
+      /** 浏览器定位：拿到就切到"我的位置"视角 */
+      locateMe() {
+        if (this.located) {
+          // 再点一次 = 切回校园视角
+          this.located = false;
+          this.myLoc = null;
+          this.resetView();
+          this.query();
+          this.util.toast('已切回校园视角', 'success');
+          return;
+        }
+        if (!navigator.geolocation) {
+          this.util.toast('当前浏览器不支持定位', 'warning');
+          return;
+        }
+        this.util.toast('正在获取定位…', 'info');
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            this.myLoc = { x: pos.coords.longitude, y: pos.coords.latitude };
+            this.located = true;
+            this.resetView();
+            this.query();
+          },
+          () => {
+            this.util.toast('定位失败或未授权，可在浏览器设置里允许定位后重试', 'warning');
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+      },
+
+      // ==================== 坐标 → 屏幕 ====================
+      /** 经纬度 → SVG 坐标（等距圆柱投影，经度按 cos(纬度) 压缩） */
+      plotLatLng(lng, lat) {
+        const cos = Math.cos(this.center.y * Math.PI / 180);
+        const mx = (lng - this.center.x) * METERS_PER_DEGREE * cos;
+        const my = (lat - this.center.y) * METERS_PER_DEGREE;
+        return { x: this.origin.x + mx * this.scale, y: this.origin.y - my * this.scale };
+      },
+      plot(goods) {
+        return this.plotLatLng(goods.x, goods.y);
+      },
+      /** 米偏移 → SVG 坐标（校园示意图用） */
+      plotMeter(mx, my) {
+        return { x: this.origin.x + mx * this.scale, y: this.origin.y - my * this.scale };
+      },
+      inView(p) {
+        return p.x > -40 && p.x < VIEW_W + 40 && p.y > -40 && p.y < VIEW_H + 40;
+      },
+
+      // ==================== 交互：拖动 / 缩放 ====================
+      clientToView(dx, dy) {
+        const stage = this.$refs.stage;
+        if (!stage) return { dx: dx, dy: dy };
+        const rect = stage.getBoundingClientRect();
+        const k = Math.min(rect.width / VIEW_W, rect.height / VIEW_H) || 1;
+        return { dx: dx / k, dy: dy / k };
+      },
+      pointOf(e) {
+        if (e.touches && e.touches.length) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+      },
+      startDrag(e) {
+        const p = this.pointOf(e);
+        this.dragStart = { x: p.x, y: p.y, panX: this.panX, panY: this.panY };
+        this.dragging = true;
+        this.dragged = false;
+      },
+      onDrag(e) {
+        if (!this.dragging || !this.dragStart) return;
+        const p = this.pointOf(e);
+        const dx = p.x - this.dragStart.x;
+        const dy = p.y - this.dragStart.y;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) this.dragged = true;
+        const d = this.clientToView(dx, dy);
+        this.panX = this.dragStart.panX + d.dx;
+        this.panY = this.dragStart.panY + d.dy;
+      },
+      endDrag() {
+        this.dragging = false;
+        this.dragStart = null;
+      },
+      /** 屏幕坐标 → SVG viewBox 坐标（svg 用 preserveAspectRatio=meet 居中，要减掉留白） */
+      eventToView(e) {
+        const stage = this.$refs.stage;
+        if (!stage || e.clientX == null) return null;
+        const rect = stage.getBoundingClientRect();
+        const k = Math.min(rect.width / VIEW_W, rect.height / VIEW_H) || 1;
+        const offsetX = (rect.width - VIEW_W * k) / 2;
+        const offsetY = (rect.height - VIEW_H * k) / 2;
+        return {
+          x: (e.clientX - rect.left - offsetX) / k,
+          y: (e.clientY - rect.top - offsetY) / k
+        };
+      },
+      /**
+       * 地图空白处点击：选中"离点击点最近"的商品（16 单位内）。
+       * <p>
+       * 不依赖"谁画在最上面"——密集重叠时最上层往往是已选中的那个，
+       * 只靠 SVG 命中顺序会出现"点了没反应 / 选中了邻居"。
+       * 拖动过（dragged）就不处理，避免拖地图时误选。
+       */
+      onMapClick(e) {
+        if (this.dragged) return;
+        const p = this.eventToView(e);
+        if (!p) return;
+        let best = null;
+        let bestDist = Infinity;
+        for (const g of this.goods) {
+          const q = this.plot(g);
+          const d = Math.sqrt((q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y));
+          if (d < bestDist) { bestDist = d; best = g; }
+        }
+        if (best && bestDist <= 16) this.select(best);
+      },
+      zoomBy(factor) {
+        const next = this.zoom * factor;
+        this.zoom = Math.min(12, Math.max(0.4, next));
+      },
+      onWheel(e) {
+        // 滚轮缩放（向上放大）
+        this.zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15);
+      },
+      resetView() {
+        this.zoom = 1;
+        this.panX = 0;
+        this.panY = 0;
+      },
+
+      // ==================== 其他 ====================
+      select(goods) { this.selected = goods; },
+      toBuy(id) { location.href = '/shop-detail.html?id=' + id; },
+      haversine(lng1, lat1, lng2, lat2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+    }
+  });
+</script>
+</body>
+</html>

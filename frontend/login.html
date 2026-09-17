@@ -239,6 +239,7 @@
   const app = new Vue({
     el: "#app",
     data: {
+      util,
       tab: 'code',
       radio: true,
       disabled: false,
@@ -247,7 +248,7 @@
     },
     methods: {
       switchTab(t) { this.tab = t; },
-      showAgreement() { alert('校园小黑市用户服务协议（示例占位）'); },
+      showAgreement() { this.util.notify({ title: '用户服务协议', message: '校园小黑市用户服务协议（示例占位）', type: 'info', duration: 4000 }); },
 sendCode() {
         if (!this.form.phone || this.form.phone.length !== 11) {
           this.$message.error('请输入11位手机号');
@@ -258,11 +259,18 @@ sendCode() {
             // 演示模式从响应直接拿验证码，同时支持 开发固定码 888888 兜底
             if (data && data.code) {
               this.form.code = data.code;
-              this.$alert('📱 演示模式验证码: ' + data.code +
-                (data.devCode ? '\n（或直接输：' + data.devCode + '）' : '') +
-                '\n有效期 ' + data.expireMinutes + ' 分钟', '已发送', { confirmButtonText: '我填好了' });
+              // 验证码已自动填入输入框，这里只需"告知"，用会自动消失的通知；
+              // 原来的 $alert 必须点按钮才关闭，容易被误认为弹窗卡住
+              this.util.notify({
+                title: '已发送',
+                message: '演示模式验证码 ' + data.code + '，已自动填入' +
+                  (data.devCode ? '（或直接输 ' + data.devCode + '）' : '') +
+                  '，有效期 ' + data.expireMinutes + ' 分钟',
+                type: 'success',
+                duration: 8000
+              });
             } else {
-              this.$message.success('验证码已发送，请查收');
+              this.util.toast('验证码已发送，请查收', 'success');
             }
           })
           .catch(err => this.$message.error('发送失败：' + (err && err.toString && err.toString())));

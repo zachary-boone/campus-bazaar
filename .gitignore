@@ -45,6 +45,15 @@ memory/
 # --- 日志 ---
 *.log
 logs/
+# 日志轮转产物（*.log 匹配不到这些后缀，会以未跟踪文件形式冒出来）
+backend/run-*.log*
+*.log.*
+
+# --- 本地运行时产物 ---
+*.tmp
+dump.rdb
+erl_crash.dump
+nohup.out
 
 # --- 简历（本地文档，不入库）---
 /resume-*.md

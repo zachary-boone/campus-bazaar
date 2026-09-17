@@ -14,10 +14,10 @@ public class FollowController {
     private IFollowService followService;
 
     /**
-     * 关注/取关用户
+     * 关注/取关用户（幂等）
      * @param followUserId 被关注的用户id
      * @param isFollow true关注 false取关
-     * @return 操作结果
+     * @return 操作后该用户的 { followers, following } 计数
      */
     @PutMapping("/{id}/{isFollow}")
     public Result follow(@PathVariable("id") Long followUserId,
@@ -44,5 +44,35 @@ public class FollowController {
     @GetMapping("/common/{id}")
     public Result followCommons(@PathVariable("id") Long userId) {
         return followService.followCommons(userId);
+    }
+
+    /**
+     * 关注数 / 粉丝数（个人中心、他人主页都用）
+     * @param userId 目标用户id
+     * @return { followers, following }
+     */
+    @GetMapping("/counts/{id}")
+    public Result counts(@PathVariable("id") Long userId) {
+        return followService.countResult(userId);
+    }
+
+    /**
+     * TA 关注的人（按关注时间倒序）
+     * @param userId 目标用户id
+     * @return 用户卡片列表
+     */
+    @GetMapping("/following/{id}")
+    public Result following(@PathVariable("id") Long userId) {
+        return followService.followingList(userId);
+    }
+
+    /**
+     * TA 的粉丝（按关注时间倒序）
+     * @param userId 目标用户id
+     * @return 用户卡片列表
+     */
+    @GetMapping("/followers/{id}")
+    public Result followers(@PathVariable("id") Long userId) {
+        return followService.followerList(userId);
     }
 }

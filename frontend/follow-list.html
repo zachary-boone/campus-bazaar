@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>关注 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+
+    .fl-wrap { padding: 12px 16px 32px; }
+
+    /* 顶部：我自己的关注/粉丝概览 */
+    .fl-hero {
+      border-radius: 16px;
+      padding: 16px;
+      color: white;
+      background: linear-gradient(135deg, #5B8FF9 0%, #07C160 100%);
+      box-shadow: 0 6px 18px rgba(91,143,249,0.25);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .fl-hero__avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      flex-shrink: 0; object-fit: cover;
+    }
+    .fl-hero__body { flex: 1; min-width: 0; }
+    .fl-hero__name { font-size: 16px; font-weight: 700; }
+    .fl-hero__sub { font-size: 12px; opacity: .9; margin-top: 4px; }
+
+    /* tab */
+    .fl-tabs {
+      display: flex; margin-top: 12px;
+      background: white; border-radius: 14px;
+      padding: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .fl-tabs__item {
+      flex: 1; text-align: center; padding: 9px 0;
+      font-size: 13px; color: var(--text-2);
+      border-radius: 11px; cursor: pointer;
+      transition: all .18s;
+    }
+    .fl-tabs__item.active {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    /* 列表 */
+    .fl-list {
+      margin-top: 12px;
+      background: white; border-radius: 16px;
+      padding: 4px 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.045);
+    }
+    .fl-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid #F3F4F6;
+    }
+    .fl-item:last-child { border-bottom: none; }
+    .fl-item__avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--primary-light);
+      flex-shrink: 0; object-fit: cover;
+      cursor: pointer;
+    }
+    .fl-item__body { flex: 1; min-width: 0; cursor: pointer; }
+    .fl-item__name { font-size: 14px; font-weight: 600; }
+    .fl-item__desc {
+      font-size: 11px; color: var(--text-3); margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .fl-item__btn {
+      flex-shrink: 0;
+      border: none; border-radius: 16px;
+      padding: 7px 14px; font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+    }
+    .fl-item__btn.is-follow {
+      background: #F3F4F6; color: var(--text-2);
+      border: 1px solid #E5E7EB;
+    }
+    .fl-item__btn.mutual {
+      background: var(--primary-light); color: var(--primary-dark);
+    }
+
+    .fl-empty {
+      text-align: center; padding: 40px 0; color: var(--text-3); font-size: 13px;
+    }
+    .fl-empty__icon { font-size: 34px; margin-bottom: 10px; }
+    .fl-tip {
+      text-align: center; font-size: 11px;
+      color: var(--text-3); margin-top: 16px; line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">{{ pageTitle }}</div>
+    <div class="app-bar__action"></div>
+  </div>
+
+  <div class="fl-wrap">
+    <!-- 当前查看的用户 -->
+    <div class="fl-hero">
+      <img class="fl-hero__avatar" :src="owner.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+      <div class="fl-hero__body">
+        <div class="fl-hero__name">{{ owner.nickName || '校园同学' }}</div>
+        <div class="fl-hero__sub">
+          <template v-if="isMe">我的关注与粉丝</template>
+          <template v-else>TA 的关注与粉丝</template>
+          · 关注 {{ owner.following || 0 }} · 粉丝 {{ owner.followers || 0 }}
+        </div>
+      </div>
+    </div>
+
+    <div class="fl-tabs">
+      <div class="fl-tabs__item" :class="{active: tab==='following'}" @click="switchTab('following')">
+        关注 ({{ owner.following || 0 }})
+      </div>
+      <div class="fl-tabs__item" :class="{active: tab==='followers'}" @click="switchTab('followers')">
+        粉丝 ({{ owner.followers || 0 }})
+      </div>
+    </div>
+
+    <div class="fl-list" v-if="!loading && list.length">
+      <div class="fl-item" v-for="u in list" :key="u.id">
+        <img class="fl-item__avatar" :src="u.icon || '/imgs/icons/default-icon.svg'"
+             @error="onImgErr" @click="toUser(u.id)">
+        <div class="fl-item__body" @click="toUser(u.id)">
+          <div class="fl-item__name">{{ u.nickName || ('同学_' + u.id) }}</div>
+          <div class="fl-item__desc">
+            <template v-if="u.introduce">{{ u.introduce }}</template>
+            <template v-else-if="tab==='followers'">关注了我 · ID {{ u.id }}</template>
+            <template v-else>我关注的伙伴 · ID {{ u.id }}</template>
+          </div>
+        </div>
+        <!-- 自己的关注列表里可以取关；粉丝列表里可以回关 -->
+        <button class="fl-item__btn"
+                :class="{'is-follow': u.followed, 'mutual': u.followed && tab==='followers'}"
+                :disabled="u._busy || !logged"
+                @click="toggle(u)">
+          {{ u.followed ? (tab==='followers' ? '互相关注' : '已关注') : '+ 关注' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="fl-empty" v-if="!loading && !list.length">
+      <div class="fl-empty__icon">{{ tab==='following' ? '👀' : '🌱' }}</div>
+      <template v-if="tab==='following'">
+        {{ isMe ? '还没关注任何人，去首页看看学长学姐吧' : 'TA 还没有关注任何人' }}
+      </template>
+      <template v-else>
+        {{ isMe ? '还没有粉丝，发点闲置好物吸引同学关注吧' : 'TA 还没有粉丝' }}
+      </template>
+    </div>
+
+    <div class="fl-empty" v-if="loading">
+      <div class="fl-empty__icon">⏳</div>加载中...
+    </div>
+
+    <div class="fl-tip" v-if="!logged">
+      登录后可查看并管理自己的关注与粉丝
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      loading: true,
+      logged: false,
+      // 当前查看谁：默认自己，带 ?id= 时看别人
+      ownerId: 0,
+      meId: 0,
+      owner: { nickName: '', icon: '', followers: 0, following: 0 },
+      tab: 'following',
+      list: []
+    },
+    computed: {
+      isMe() { return this.ownerId === this.meId; },
+      pageTitle() {
+        if (this.tab === 'followers') return this.isMe ? '我的粉丝' : 'TA 的粉丝';
+        return this.isMe ? '我的关注' : 'TA 的关注';
+      }
+    },
+    created() {
+      // 默认不传 id 就是看自己；info.html 的统计格、index 的"学长学姐"都跳这里
+      const idParam = util.getUrlParam('id');
+      const tabParam = util.getUrlParam('tab');
+      if (tabParam === 'followers' || tabParam === 'following') this.tab = tabParam;
+      this.logged = !!sessionStorage.getItem('token');
+
+      const me = sessionStorage.getItem('userId');
+      this.meId = me ? parseInt(me, 10) : 0;
+
+      if (idParam) {
+        this.ownerId = parseInt(idParam, 10);
+        this.loadOwner();
+      } else if (this.meId) {
+        this.ownerId = this.meId;
+        this.loadOwner();
+      } else if (this.logged) {
+        // sessionStorage 里没缓存 id（老会话）时兜底问一次后端
+        axios.get('/user/me')
+          .then(({ data }) => {
+            this.meId = data.id;
+            this.ownerId = data.id;
+            sessionStorage.setItem('userId', String(data.id));
+            this.loadOwner();
+          })
+          .catch(() => { this.loading = false; });
+      } else {
+        this.loading = false;
+      }
+    },
+    methods: {
+      goBack() { history.length > 1 ? history.back() : (location.href = '/info.html'); },
+      onImgErr(e) { e.target.src = '/imgs/icons/default-icon.svg'; },
+      toUser(id) {
+        if (id === this.meId) { location.href = '/info.html'; return; }
+        location.href = '/other-info.html?id=' + id;
+      },
+
+      /** 顶部卡片：用户资料 + 真实关注/粉丝数 */
+      loadOwner() {
+        axios.get('/user/card/' + this.ownerId)
+          .then(({ data }) => {
+            this.owner = data || {};
+            // 顺手缓存自己的 id，其他页面就不必再查 /user/me
+            if (this.ownerId === this.meId) sessionStorage.setItem('userId', String(this.meId));
+          })
+          .catch(() => {})
+          .then(() => this.loadList());
+      },
+
+      /** 列表：关注 or 粉丝 */
+      loadList() {
+        this.loading = true;
+        const url = (this.tab === 'followers' ? '/follow/followers/' : '/follow/following/') + this.ownerId;
+        axios.get(url)
+          .then(({ data }) => { this.list = (data || []).map(u => Object.assign({ _busy: false }, u)); })
+          .catch(err => {
+            this.list = [];
+            this.$message.error(err && err.toString ? err.toString() : '列表加载失败');
+          })
+          .then(() => { this.loading = false; });
+      },
+
+      switchTab(t) {
+        if (this.tab === t) return;
+        this.tab = t;
+        this.loadList();
+      },
+
+      /** 关注/取关：调真实接口，用返回的计数同时刷新顶部与自己列表里的按钮态 */
+      toggle(u) {
+        if (!this.logged) { this.$message.error('请先登录'); return; }
+        if (u._busy) return;
+        const next = !u.followed;
+        u._busy = true;
+        axios.put('/follow/' + u.id + '/' + next)
+          .then(({ data }) => {
+            u.followed = next;
+            u._busy = false;
+            // 被关注人的粉丝数变了；如果看的是自己，自己的关注数也变了
+            if (this.ownerId === u.id) this.owner.followers = data.followers;
+            if (this.ownerId === this.meId) this.owner.following = data.following;
+            this.$message.success(next ? '已关注 ' + (u.nickName || '') : '已取消关注');
+            // 取关后留在"关注"列表里会显得矛盾，重新拉一次让列表与后端一致
+            if (this.tab === 'following') this.loadList();
+          })
+          .catch(err => {
+            u._busy = false;
+            this.$message.error(err && err.toString ? err.toString() : '操作失败');
+          });
+      }
+    }
+  });
+</script>
+</body>
+</html>

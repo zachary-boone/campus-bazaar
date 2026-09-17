@@ -167,6 +167,13 @@ html, body {
   margin-top: -10px;
   box-shadow: 0 4px 12px rgba(255,107,107,0.4);
 }
+/* 底部导航里的图片一律限制尺寸：曾因 add.png 没被限制大小而溢出，
+   盖住相邻的「地图」「消息」两个 tab，导致点击被图片吃掉（按钮像"点不动"） */
+.foot-box img {
+  display: block; margin: 0 auto;
+  max-width: 34px; max-height: 34px;
+  object-fit: contain;
+}
 
 /* ---- 滚动条美化 ---- */
 ::-webkit-scrollbar { width: 0; height: 0; }

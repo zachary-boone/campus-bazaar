@@ -41,7 +41,9 @@ spring:
         acknowledge-mode: manual
         default-requeue-rejected: true
         # 本地无 RabbitMQ 时禁用自动启动，避免反复重连耗资源
-        auto-startup: ${SPRING_RABBIT_LISTENER_AUTOSTARTUP:false}
+        # 注意：秒杀异步建单与支付轮询依赖消费者，默认必须为 true；
+        # 仅当本机确实没有 RabbitMQ 时才用环境变量设为 false
+        auto-startup: ${SPRING_RABBITMQ_LISTENER_AUTOSTARTUP:true}
 mybatis-plus:
   type-aliases-package: com.campus.bazaar.entity # 别名扫描包
 # 业务自定义配置
@@ -57,6 +59,9 @@ management:
     health:
       show-details: always
 logging:
+  # 同时输出到控制台与文件（排障用）
+  file:
+    name: run-0913.log
   level:
     com.campus.bazaar: debug
   pattern:

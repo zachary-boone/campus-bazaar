@@ -3,12 +3,17 @@ package com.campus.bazaar.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.campus.bazaar.dto.LoginFormDTO;
 import com.campus.bazaar.dto.Result;
+import com.campus.bazaar.dto.UserCardDTO;
+import com.campus.bazaar.entity.Goods;
 import com.campus.bazaar.entity.User;
 import com.campus.bazaar.entity.UserInfo;
+import com.campus.bazaar.mapper.GoodsMapper;
 import com.campus.bazaar.mapper.UserMapper;
+import com.campus.bazaar.service.IFollowService;
 import com.campus.bazaar.service.IUserInfoService;
 import com.campus.bazaar.service.IUserService;
 import com.campus.bazaar.utils.RedisConstants;
@@ -21,7 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -36,11 +45,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Resource
     private IUserInfoService userInfoService;
 
+    @Resource
+    private IFollowService followService;
+
+    @Resource
+    private GoodsMapper goodsMapper;
+
     /** BCrypt 密码加密器（自带随机盐，替代裸 MD5） */
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     /** 全局兜底验证码 */
     private static final String DEV_FIXED_CODE = "888888";
+
+    /** tb_goods.status：1在售 / 2已售 / 3下架 / 4交易中 */
+    private static final int GOODS_STATUS_ON_SALE = 1;
+    private static final int GOODS_STATUS_SOLD = 2;
+
+    /** 学长学姐专区单页最多返回的卖家数 */
+    private static final int MAX_SELLER_LIST_SIZE = 50;
 
     @Override
     public Result sendCode(String phone) {
@@ -330,5 +352,121 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         log.info("✅ 登录成功: userId={}, phone={}, token={}********", user.getId(), user.getPhone(), token.substring(0, 8));
         return token;
+    }
+
+    @Override
+    public Result userCard(Long userId) {
+        if (userId == null) {
+            return Result.fail("参数不合法");
+        }
+        User user = getById(userId);
+        if (user == null) {
+            return Result.fail("用户不存在");
+        }
+
+        UserCardDTO card = new UserCardDTO();
+        card.setId(user.getId());
+        card.setNickName(user.getNickName());
+        card.setIcon(user.getIcon());
+        // 签名存在 tb_user_info，可能还没填过
+        UserInfo info = userInfoService.getById(userId);
+        card.setIntroduce(info == null ? null : info.getIntroduce());
+        // 计数以 tb_follow 实时算出（tb_user_info.fans/followee 是历史冗余列，一直没人维护，不作为数据源）
+        card.setFollowers(followService.countFollowers(userId));
+        card.setFollowing(followService.countFollowing(userId));
+        // 在售 / 已售商品数（tb_goods: 1在售 2已售 3下架 4交易中）
+        card.setGoodsCount(countGoods(userId, GOODS_STATUS_ON_SALE));
+        card.setSoldCount(countGoods(userId, GOODS_STATUS_SOLD));
+        // 是否已关注：未登录时 isFollow 返回 false，前端据此提示登录
+        card.setFollowed(followService.isFollow(userId));
+        return Result.ok(card);
+    }
+
+    @Override
+    public Result sellerList(Integer current) {
+        int pageNo = (current == null || current < 1) ? 1 : current;
+        int offset = (pageNo - 1) * MAX_SELLER_LIST_SIZE;
+
+        // 1. 一次 GROUP BY 取"每个卖家的在售/已售商品数"，只保留还有在售商品的卖家
+        QueryWrapper<Goods> wrapper = new QueryWrapper<>();
+        wrapper.select("seller_id",
+                        "SUM(CASE WHEN status = " + GOODS_STATUS_ON_SALE + " THEN 1 ELSE 0 END) AS goods_count",
+                        "SUM(CASE WHEN status = " + GOODS_STATUS_SOLD + " THEN 1 ELSE 0 END) AS sold_count")
+                .groupBy("seller_id")
+                .having("SUM(CASE WHEN status = " + GOODS_STATUS_ON_SALE + " THEN 1 ELSE 0 END) > 0")
+                .orderByDesc("goods_count")
+                .last("LIMIT " + offset + ", " + MAX_SELLER_LIST_SIZE);
+        List<Map<String, Object>> rows = goodsMapper.selectMaps(wrapper);
+        if (rows == null || rows.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        // 2. 按聚合结果顺序取卖家 id
+        List<Long> sellerIds = new ArrayList<>();
+        Map<Long, long[]> statsMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object idObj = row.get("seller_id");
+            if (!(idObj instanceof Number)) {
+                continue;
+            }
+            long sellerId = ((Number) idObj).longValue();
+            long goodsCount = num(row.get("goods_count"));
+            long soldCount = num(row.get("sold_count"));
+            sellerIds.add(sellerId);
+            statsMap.put(sellerId, new long[]{goodsCount, soldCount});
+        }
+        if (sellerIds.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        // 3. 批量回填用户资料 / 签名 / 粉丝数（各一次查询，不做逐条 N+1）
+        List<User> users = listByIds(sellerIds);
+        Map<Long, User> userMap = new LinkedHashMap<>();
+        for (User user : users) {
+            userMap.put(user.getId(), user);
+        }
+        Map<Long, String> introduceMap = new LinkedHashMap<>();
+        List<UserInfo> infos = userInfoService.listByIds(sellerIds);
+        if (infos != null) {
+            for (UserInfo info : infos) {
+                introduceMap.put(info.getUserId(), info.getIntroduce());
+            }
+        }
+        Map<Long, Long> fansMap = followService.countFollowersBatch(sellerIds);
+
+        // 4. 按"在售商品数"的顺序组装（顺带过滤已注销用户）
+        List<UserCardDTO> cards = new ArrayList<>();
+        for (Long sellerId : sellerIds) {
+            User seller = userMap.get(sellerId);
+            if (seller == null) {
+                continue;
+            }
+            long[] stats = statsMap.get(sellerId);
+            UserCardDTO card = new UserCardDTO();
+            card.setId(seller.getId());
+            card.setNickName(seller.getNickName());
+            card.setIcon(seller.getIcon());
+            card.setIntroduce(introduceMap.get(sellerId));
+            card.setGoodsCount(stats[0]);
+            card.setSoldCount(stats[1]);
+            card.setFollowers(fansMap.getOrDefault(sellerId, 0L));
+            card.setFollowed(followService.isFollow(sellerId));
+            cards.add(card);
+        }
+        return Result.ok(cards);
+    }
+
+    /** 统计某卖家的商品数（按状态） */
+    private long countGoods(Long sellerId, int status) {
+        // MP 3.4.x 的 selectCount 返回 Integer
+        Integer count = goodsMapper.selectCount(new QueryWrapper<Goods>()
+                .eq("seller_id", sellerId)
+                .eq("status", status));
+        return count == null ? 0L : count.longValue();
+    }
+
+    /** 聚合结果里的数值列可能被驱动返回成 BigDecimal / Long，统一转 long */
+    private long num(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 }

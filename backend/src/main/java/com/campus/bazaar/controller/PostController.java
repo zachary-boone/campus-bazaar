@@ -86,6 +86,32 @@ public class PostController {
         return Result.ok(records);
     }
 
+    /**
+     * 某个用户发布的帖子（他人主页用）
+     * @param userId  目标用户id
+     * @param current 页码
+     */
+    @GetMapping("/of/user/{id}")
+    public Result queryPostOfUser(@PathVariable("id") Long userId,
+                                  @RequestParam(value = "current", defaultValue = "1") Integer current) {
+        if (userId == null) {
+            return Result.fail("参数不合法");
+        }
+        Page<Post> page = postService.query()
+                .eq("user_id", userId)
+                .orderByDesc("create_time")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+        List<Post> records = page.getRecords();
+        records.forEach(post -> {
+            User user = userService.getById(post.getUserId());
+            if (user != null) {
+                post.setName(user.getNickName());
+                post.setIcon(user.getIcon());
+            }
+        });
+        return Result.ok(records);
+    }
+
     @GetMapping("/hot")
     public Result queryHotPost(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         // 根据用户查询

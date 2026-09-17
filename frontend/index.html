@@ -66,6 +66,13 @@
     .hero__text { color: white; flex: 1; }
     .hero__text h2 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
     .hero__text p { margin: 0; font-size: 13px; opacity: 0.95; }
+    /* 每日签到入口（hero 内的可点击胶囊） */
+    .hero-sign {
+      display: inline-block; margin-top: 10px;
+      padding: 5px 12px; border-radius: 14px;
+      background: rgba(255,255,255,0.24);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
     .hero__emojis { font-size: 38px; letter-spacing: 4px; }
     .hero__emojis div { animation: float 3s ease-in-out infinite; }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -323,7 +330,12 @@
     <div class="hero">
       <div class="hero__text">
         <h2>🎒 校园小黑市</h2>
-        <p>同校交易 · 拼单包邮 · 每日签到领运费券</p>
+        <p>同校交易 · 拼单包邮</p>
+        <div class="hero-sign" @click="toSign">
+          📅 每日签到领运费券
+          <span v-if="signClaimable > 0">({{signClaimable}}) ›</span>
+          <span v-else>›</span>
+        </div>
       </div>
       <div class="hero__emojis">
         <div style="animation-delay: 0s">📚</div>
@@ -376,21 +388,19 @@
     <div class="dorm-bar">
       <div class="dorm-bar__title">
         <h3>📍 楼层定位</h3>
-        <span class="chip">宿舍自提快</span>
+        <a class="more" style="font-size:12px;color:var(--primary-dark);cursor:pointer" @click="toMap('')">查看地图 ›</a>
       </div>
-      <div class="dorm-list">
-        <div class="dorm-cell" @click="toDorm('紫荆')">
-          <span class="dorm-cell__hot">🔥</span>
-          <div class="dorm-cell__name">紫荆楼</div>
-          <div class="dorm-cell__count">128件在售</div>
+      <div class="dorm-list" v-if="areas.length">
+        <div class="dorm-cell" v-for="(a, i) in areas" :key="a.area" @click="toMap(a.area)">
+          <span class="dorm-cell__hot" v-if="i === 0">🔥</span>
+          <div class="dorm-cell__name">{{ a.area }}</div>
+          <div class="dorm-cell__count">{{ a.count }}件在售</div>
         </div>
-        <div class="dorm-cell" @click="toDorm('南区')">
-          <div class="dorm-cell__name">南区</div>
-          <div class="dorm-cell__count">86件在售</div>
-        </div>
-        <div class="dorm-cell" @click="toDorm('西区')">
-          <div class="dorm-cell__name">西区</div>
-          <div class="dorm-cell__count">52件在售</div>
+      </div>
+      <div class="dorm-list" v-else>
+        <div class="dorm-cell" @click="toMap('')">
+          <div class="dorm-cell__name">校园地图</div>
+          <div class="dorm-cell__count">查看在售商品分布</div>
         </div>
       </div>
     </div>
@@ -468,20 +478,29 @@
       posts: [],
       current: 1,
       isReachBottom: false,
-      nickName: ''
+      nickName: '',
+      signClaimable: 0,
+      areas: []
     },
     created() {
       this.nickName = sessionStorage.getItem('nickName') || '';
       this.queryTypes();
       this.queryGoods();
       this.queryPosts();
+      this.querySignClaimable();
+      this.queryAreas();
     },
     methods: {
       onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      // 分类名形如「数码电子 / 图书教材 / 生活用品」，按前缀匹配图标与配色
       getCatEmoji(name) {
-        return ({'数码':'📱','图书':'📚','生活':'🧴','服饰':'🧥','运动':'🏃','美妆':'💄','其他':'📦'})[name] || '🛒';
+        const n = name || '';
+        const map = [['数码', '📱'], ['图书', '📚'], ['生活', '🧴'], ['服饰', '🧥'], ['运动', '🏃'], ['美妆', '💄'], ['其他', '📦']];
+        const hit = map.find(([k]) => n.indexOf(k) === 0);
+        return hit ? hit[1] : '🛒';
       },
       getCatStyle(name) {
+        const n = name || '';
         const m = {
           '数码': 'linear-gradient(135deg,#5B8FF9,#26C6DA)',
           '图书': 'linear-gradient(135deg,#9575CD,#7986CB)',
@@ -491,7 +510,8 @@
           '美妆': 'linear-gradient(135deg,#FF7043,#FFCA28)',
           '其他': 'linear-gradient(135deg,#78909C,#90A4AE)'
         };
-        return 'background:' + (m[name] || 'linear-gradient(135deg,#26A69A,#5B8FF9)');
+        const key = Object.keys(m).find(k => n.indexOf(k) === 0);
+        return 'background:' + (key ? m[key] : 'linear-gradient(135deg,#26A69A,#5B8FF9)');
       },
       queryTypes() {
         axios.get("/goods/category/list")
@@ -505,7 +525,9 @@
               g.img = (g.images||'').split(',')[0] || '/imgs/goods/0.svg';
             });
             this.goodsList = this.goodsList.concat(data);
-          });
+          })
+          // 原来没有 catch：请求失败会静默变成"空列表"，排查不到原因
+          .catch(err => util.toast((err && err.toString && err.toString()) || '商品加载失败', 'error'));
       },
       queryPosts() {
         axios.get("/post/hot?current=1")
@@ -521,9 +543,30 @@
       toGoods(id) { location.href = "/shop-detail.html?id=" + id; },
       toPost(id) { location.href = "/post-detail.html?id=" + id; },
       toPage(i) { location.href = "/info.html"; },
+      toSign() { location.href = "/sign.html"; },
+      /** 已登录时拉取可领取运费券张数，展示在 hero 签到入口上（未登录不请求） */
+      querySignClaimable() {
+        if (!sessionStorage.getItem('token')) return;
+        axios.get('/sign/records')
+          .then(({ data }) => { this.signClaimable = data.claimable || 0; })
+          .catch(() => {});
+      },
       toDorm(name) { location.href = "/shop-list.html?name=" + encodeURIComponent(name); },
+      /** 各校区在售数量（来自 Redis GEO 索引，替换掉原来写死的 128/86/52） */
+      queryAreas() {
+        axios.get('/goods/map', { params: { radius: 10 } })
+          .then(({ data }) => { this.areas = (data && data.areas) || []; })
+          .catch(() => {});
+      },
+      /** 跳到地图页；带 area 就只看该校区 */
+      toMap(area) {
+        location.href = area ? ('/map.html?area=' + encodeURIComponent(area)) : '/map.html';
+      },
       toGroupon() { this.$message.success('🎁 拼单专区即将上线'); },
-      toSenior() { this.$message.success('👥 学长学姐专区即将上线'); },
+      toSenior() {
+        // 「学长学姐」= 学长学姐专区：列出有在售商品的卖家，可进主页看 TA 的全部在售
+        location.href = "/senior-list.html";
+      },
       toNew() { this.$message.success('✨ 今日新上筛选已应用'); },
       toSeckill() { location.href = "/shop-detail.html?id=1"; },
       search() { this.$message.info('请输入关键词搜索 (示例实现)'); }

@@ -106,14 +106,18 @@
     <div class="sort-item" :class="{active: sortBy===''}" @click="sortAndQuery('')">
       <i class="el-icon-menu"></i> 综合
     </div>
+    <div class="sort-item" :class="{active: sortBy==='new'}" @click="sortAndQuery('new')">
+      最新
+    </div>
+    <div class="sort-item" :class="{active: sortBy==='priceAsc' || sortBy==='priceDesc'}" @click="togglePrice">
+      价格
+      <i :class="sortBy==='priceDesc' ? 'el-icon-bottom' : (sortBy==='priceAsc' ? 'el-icon-top' : 'el-icon-sort')"></i>
+    </div>
     <div class="sort-item" :class="{active: sortBy==='comments'}" @click="sortAndQuery('comments')">
       人气
     </div>
     <div class="sort-item" :class="{active: sortBy==='score'}" @click="sortAndQuery('score')">
       评分
-    </div>
-    <div class="sort-item" :class="{active: sortBy==='price'}" @click="sortAndQuery('price')">
-      价格
     </div>
   </div>
 
@@ -190,6 +194,12 @@
         this.shops = [];
         this.noMore = false;
         this.queryShops();
+      },
+      /** 价格：第一次点按升序，再点切换降序（和常见电商一致） */
+      togglePrice() {
+        const next = this.sortBy === 'priceAsc' ? 'priceDesc' : 'priceAsc';
+        this.sortAndQuery(next);
+        this.util.toast(next === 'priceAsc' ? '价格从低到高' : '价格从高到低', 'info');
       },
       onScroll(e) {
         const el = e.target;

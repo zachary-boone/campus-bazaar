@@ -319,10 +319,17 @@
         this.$message.info('已保存到草稿');
       },
       logout() {
-        if (!confirm('确定要退出登录吗？')) return;
-        sessionStorage.clear();
-        this.$message.success('已退出登录');
-        setTimeout(() => location.href = '/login.html', 600);
+        // 换成站内弹窗：原生 confirm 会阻塞页面，且点击遮罩也无法关闭
+        this.util.closeAllPopups();
+        this.$confirm('确定要退出登录吗？', '退出登录',
+          { confirmButtonText: '退出登录', cancelButtonText: '再想想', type: 'warning',
+            closeOnClickModal: true, closeOnPressEscape: true })
+          .then(() => {
+            sessionStorage.clear();
+            this.util.toast('已退出登录', 'success');
+            setTimeout(() => location.href = '/login.html', 600);
+          })
+          .catch(() => {});
       }
     }
   });

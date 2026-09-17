@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>学长学姐 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+
+    .sr-wrap { padding: 12px 16px 32px; }
+
+    /* 顶部说明卡 */
+    .sr-hero {
+      border-radius: 16px;
+      padding: 16px;
+      color: white;
+      background: linear-gradient(135deg, #5B8FF9 0%, #07C160 100%);
+      box-shadow: 0 6px 18px rgba(91,143,249,0.25);
+    }
+    .sr-hero__title { font-size: 18px; font-weight: 800; }
+    .sr-hero__desc { font-size: 12px; opacity: .92; margin-top: 6px; line-height: 1.6; }
+    .sr-hero__meta { font-size: 12px; opacity: .9; margin-top: 8px; }
+
+    /* 卖家卡列表 */
+    .sr-list { margin-top: 12px; }
+    .sr-card {
+      display: flex; align-items: center; gap: 12px;
+      background: white; border-radius: 16px;
+      padding: 14px; margin-bottom: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.045);
+      cursor: pointer;
+      transition: transform .16s;
+    }
+    .sr-card:active { transform: scale(0.985); }
+    .sr-card__avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--primary-light);
+      flex-shrink: 0; object-fit: cover;
+    }
+    .sr-card__body { flex: 1; min-width: 0; }
+    .sr-card__name {
+      font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .sr-card__rank {
+      font-size: 10px; font-weight: 700;
+      background: var(--primary-light); color: var(--primary-dark);
+      border-radius: 8px; padding: 1px 6px;
+    }
+    .sr-card__intro {
+      font-size: 11px; color: var(--text-3); margin-top: 4px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sr-card__stats {
+      display: flex; gap: 12px; margin-top: 7px;
+      font-size: 11px; color: var(--text-2);
+    }
+    .sr-card__stats b { color: var(--primary-dark); font-size: 13px; }
+    .sr-card__go {
+      flex-shrink: 0; font-size: 11px; color: var(--text-3);
+      text-align: right; line-height: 1.5;
+    }
+
+    .sr-empty { text-align: center; padding: 44px 0; color: var(--text-3); font-size: 13px; }
+    .sr-empty__icon { font-size: 34px; margin-bottom: 10px; }
+    .sr-tip { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 14px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">学长学姐</div>
+    <div class="app-bar__action"></div>
+  </div>
+
+  <div class="sr-wrap">
+    <div class="sr-hero">
+      <div class="sr-hero__title">👥 学长学姐专区</div>
+      <div class="sr-hero__desc">同校学长学姐在售的闲置好物，点进主页可以直接看 TA 的全部在售商品</div>
+      <div class="sr-hero__meta">当前 {{list.length}} 位学长学姐在出物</div>
+    </div>
+
+    <div class="sr-list" v-if="!loading && list.length">
+      <div class="sr-card" v-for="(s, i) in list" :key="s.id" @click="toUser(s.id)">
+        <img class="sr-card__avatar" :src="s.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+        <div class="sr-card__body">
+          <div class="sr-card__name">
+            {{ s.nickName || ('同学_' + s.id) }}
+            <span class="sr-card__rank" v-if="i === 0">在售最多</span>
+          </div>
+          <div class="sr-card__intro">
+            {{ s.introduce || '这位学长学姐还没写签名～' }}
+          </div>
+          <div class="sr-card__stats">
+            <span>在售 <b>{{ s.goodsCount || 0 }}</b> 件</span>
+            <span>已售 <b>{{ s.soldCount || 0 }}</b> 件</span>
+            <span>粉丝 <b>{{ s.followers || 0 }}</b></span>
+          </div>
+        </div>
+        <div class="sr-card__go">看 TA 的<br>在售好物 ›</div>
+      </div>
+    </div>
+
+    <div class="sr-empty" v-if="!loading && !list.length">
+      <div class="sr-empty__icon">🛒</div>
+      还没有学长学姐在售商品，去发布第一件吧
+    </div>
+
+    <div class="sr-empty" v-if="loading">
+      <div class="sr-empty__icon">⏳</div>加载中...
+    </div>
+
+    <div class="sr-tip">
+      按"在售商品数"排序，只展示还有在售好物的卖家
+    </div>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      loading: true,
+      list: []
+    },
+    created() {
+      this.querySellers();
+    },
+    methods: {
+      goBack() { location.href = '/index.html'; },
+      onImgErr(e) { e.target.src = '/imgs/icons/default-icon.svg'; },
+      toUser(id) { location.href = '/other-info.html?id=' + id; },
+
+      /** 有在售商品的卖家列表（公开接口，不需要登录） */
+      querySellers() {
+        this.loading = true;
+        axios.get('/user/sellers', { params: { current: 1 } })
+          .then(({data}) => { this.list = data || []; })
+          .catch(err => {
+            this.list = [];
+            this.$message.error(err && err.toString ? err.toString() : '列表加载失败');
+          })
+          .then(() => { this.loading = false; });
+      }
+    }
+  });
+</script>
+</body>
+</html>
