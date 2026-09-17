@@ -14,6 +14,7 @@ Vue.component("footBar", {
     </div>
     <div class="foot-box" :class="{active: activeBtn === 3}" @click="toPage(3)">
       <div class="foot-view"><i class="el-icon-chat-dot-round"></i></div>
+      <span class="foot-badge" v-if="msgUnread > 0">{{ msgUnread > 99 ? '99+' : msgUnread }}</span>
       <div class="foot-text">消息</div>
     </div>
     <div class="foot-box" :class="{active: activeBtn === 4}" @click="toPage(4)">
@@ -24,9 +25,18 @@ Vue.component("footBar", {
   `,
   data() {
     return {
+      msgUnread: 0
     }
   },
   props: ['activeBtn'],
+  created() {
+    // 未读红点：只有登录了才查，避免每个页面都白打一次 401
+    if (sessionStorage.getItem('token')) {
+      axios.get('/messages/unread/count')
+        .then(({ data }) => { this.msgUnread = Number(data) || 0; })
+        .catch(() => {});
+    }
+  },
   methods: {
     toPage(i) {
       if (i === 0) {
@@ -37,12 +47,15 @@ Vue.component("footBar", {
         // 地图：原来这里没处理，导致底部「地图」点了没反应
         location.href = "/map.html"
       } else if (i === 3) {
-        // 消息暂未实现，给个明确反馈，别让按钮像"坏了"
-        if (typeof util !== 'undefined' && util.toast) {
-          util.toast('消息功能即将上线', 'info')
-        } else {
-          alert('消息功能即将上线')
+        // 消息中心：需要登录，先判 token（401 会被 common.js 拦截跳登录，这里提前拦体验更好）
+        if (!sessionStorage.getItem('token')) {
+          if (typeof util !== 'undefined' && util.toast) {
+            util.toast('请先登录', 'info')
+          }
+          location.href = "/login.html"
+          return
         }
+        location.href = "/message.html"
       } else if (i === 4) {
         location.href = "/info.html"
       }

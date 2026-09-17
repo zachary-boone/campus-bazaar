@@ -194,6 +194,8 @@
       padding: 4px 10px;
       border-radius: 10px;
       color: var(--text-2);
+      cursor: pointer;
+      user-select: none;
     }
     .feed-tab.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
     .feed-grid {
@@ -419,9 +421,12 @@
     <div class="feed-title">
       <h3>🔥 在售商品</h3>
       <div class="feed-tabs">
-        <span class="feed-tab active">综合</span>
-        <span class="feed-tab">最新</span>
-        <span class="feed-tab">价格</span>
+        <span class="feed-tab" :class="{active: sortBy===''}" @click="sortGoods('')">综合</span>
+        <span class="feed-tab" :class="{active: sortBy==='new'}" @click="sortGoods('new')">最新</span>
+        <span class="feed-tab" :class="{active: sortBy==='priceAsc' || sortBy==='priceDesc'}"
+              @click="togglePriceSort">
+          价格<i :class="sortBy==='priceDesc' ? 'el-icon-bottom' : (sortBy==='priceAsc' ? 'el-icon-top' : 'el-icon-sort')"></i>
+        </span>
       </div>
     </div>
     <div class="feed-grid">
@@ -478,6 +483,7 @@
       posts: [],
       current: 1,
       isReachBottom: false,
+      sortBy: '',   // 在售商品排序：'' 综合 / new 最新 / priceAsc / priceDesc
       nickName: '',
       signClaimable: 0,
       areas: []
@@ -519,7 +525,7 @@
           .catch(err => this.$message.error(err && err.toString && err.toString()));
       },
       queryGoods() {
-        axios.get("/goods/of/type", { params: { typeId: 0, current: this.current }})
+        axios.get("/goods/of/type", { params: { typeId: 0, sortBy: this.sortBy, current: this.current }})
           .then(({data}) => {
             data.forEach(g => {
               g.img = (g.images||'').split(',')[0] || '/imgs/goods/0.svg';
@@ -528,6 +534,20 @@
           })
           // 原来没有 catch：请求失败会静默变成"空列表"，排查不到原因
           .catch(err => util.toast((err && err.toString && err.toString()) || '商品加载失败', 'error'));
+      },
+      /** 首页「在售商品」排序：综合 / 最新 / 价格 */
+      sortGoods(by) {
+        if (this.sortBy === by) return;
+        this.sortBy = by;
+        this.current = 1;
+        this.goodsList = [];
+        this.queryGoods();
+      },
+      /** 价格：第一次点升序，再点切降序（与分类页一致） */
+      togglePriceSort() {
+        const next = this.sortBy === 'priceAsc' ? 'priceDesc' : 'priceAsc';
+        this.sortGoods(next);
+        util.toast(next === 'priceAsc' ? '价格从低到高' : '价格从高到低', 'info');
       },
       queryPosts() {
         axios.get("/post/hot?current=1")

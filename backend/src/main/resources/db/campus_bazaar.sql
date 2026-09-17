@@ -317,6 +317,24 @@ SET `stock` = 100,
 WHERE `id` = 1;
 
 -- --------------------------------------------------------------------
+--  站内消息（底栏「消息」）：系统 1 / 交易 2 / 互动 3
+--  演示数据：见同目录 upgrade-0917-message.sql
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tb_message` (
+  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id`     BIGINT       NOT NULL                COMMENT '收件人用户id',
+  `type`        TINYINT      NOT NULL DEFAULT 1      COMMENT '类型：1系统 2交易 3互动',
+  `title`       VARCHAR(64)  NOT NULL                COMMENT '标题（列表一行显示）',
+  `content`     VARCHAR(255)          DEFAULT NULL   COMMENT '正文摘要',
+  `link`        VARCHAR(128)          DEFAULT NULL   COMMENT '点击跳转链接（可空）',
+  `is_read`     TINYINT      NOT NULL DEFAULT 0      COMMENT '0未读 1已读',
+  `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_read`  (`user_id`, `is_read`),
+  KEY `idx_user_time`  (`user_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='站内消息';
+
+-- --------------------------------------------------------------------
 --  更多商品 / 秒杀 / 帖子演示数据：见同目录 seed-0913-more-goods.sql
 --  （幂等可重复执行，已建库环境直接跑该脚本即可）
 -- --------------------------------------------------------------------

@@ -17,29 +17,29 @@ INSERT INTO `tb_goods`
    `price`, `sold`, `comments`, `score`, `trade_time`, `stock`)
 SELECT * FROM (
   -- ===== 数码电子 (type 1) =====
-  SELECT '罗技 MX Master 3S 无线鼠标'      AS n, 1 AS t, 1 AS s, 1 AS st, '/imgs/goods/2.svg'  AS img, '东校区' AS area, '宿舍楼2栋 311' AS addr, 120.149192 AS x, 30.316078 AS y, 189 AS p,  12 AS sold, 24 AS cmt, 46 AS score, '18:00-22:00' AS tt, 1 AS stock
-  UNION ALL SELECT '索尼 WH-1000XM4 降噪耳机', 1, 2, 1, '/imgs/goods/1.svg', '北校区', '宿舍楼7栋 205', 120.148603, 30.318618,  899,  5, 18, 48, '12:00-13:30', 1
-  UNION ALL SELECT 'Apple AirPods Pro 2 全新未拆', 1, 1, 1, '/imgs/goods/3.svg', '南校区', '紫荆宿舍楼 519', 120.149093, 30.324666, 1299, 36, 58, 50, '全天', 50
+  SELECT '罗技 MX Master 3S 无线鼠标'      AS n, 1 AS t, 1 AS s, 1 AS st, '/imgs/goods/16.svg'  AS img, '东校区' AS area, '宿舍楼2栋 311' AS addr, 120.149192 AS x, 30.316078 AS y, 189 AS p,  12 AS sold, 24 AS cmt, 46 AS score, '18:00-22:00' AS tt, 1 AS stock
+  UNION ALL SELECT '索尼 WH-1000XM4 降噪耳机', 1, 2, 1, '/imgs/goods/17.svg', '北校区', '宿舍楼7栋 205', 120.148603, 30.318618,  899,  5, 18, 48, '12:00-13:30', 1
+  UNION ALL SELECT 'Apple AirPods Pro 2 全新未拆', 1, 1, 1, '/imgs/goods/18.svg', '南校区', '紫荆宿舍楼 519', 120.149093, 30.324666, 1299, 36, 58, 50, '全天', 50
   -- ===== 图书教材 (type 2) =====
-  UNION ALL SELECT '数据结构与算法分析(Java版)', 2, 2, 1, '/imgs/goods/4.svg', '北校区', '实验楼A 302', 120.151954, 30.324970,  32,  9, 11, 47, '全天', 1
-  UNION ALL SELECT '雅思真题 4-18 全套 9成新', 2, 1, 1, '/imgs/goods/5.svg', '南校区', '图书馆2层', 120.146659, 30.312742, 120,  4,  9, 45, '09:00-21:00', 1
-  UNION ALL SELECT '考研英语黄皮书 真题全套', 2, 2, 1, '/imgs/goods/6.svg', '东校区', '自习室B 201', 120.151505, 30.333422,  89, 21, 33, 46, '全天', 30
+  UNION ALL SELECT '数据结构与算法分析(Java版)', 2, 2, 1, '/imgs/goods/19.svg', '北校区', '实验楼A 302', 120.151954, 30.324970,  32,  9, 11, 47, '全天', 1
+  UNION ALL SELECT '雅思真题 4-18 全套 9成新', 2, 1, 1, '/imgs/goods/20.svg', '南校区', '图书馆2层', 120.146659, 30.312742, 120,  4,  9, 45, '09:00-21:00', 1
+  UNION ALL SELECT '考研英语黄皮书 真题全套', 2, 2, 1, '/imgs/goods/21.svg', '东校区', '自习室B 201', 120.151505, 30.333422,  89, 21, 33, 46, '全天', 30
   -- ===== 生活用品 (type 3) =====
-  UNION ALL SELECT '小米电水壶 1.5L 恒温款', 3, 1, 1, '/imgs/goods/7.svg', '东校区', '宿舍楼6栋 412', 120.157780, 30.310633,  65,  7, 12, 46, '随时', 1
-  UNION ALL SELECT '宿舍折叠书桌 懒人桌', 3, 2, 1, '/imgs/goods/8.svg', '北校区', '宿舍楼7栋 108', 120.148603, 30.318618,  55,  3,  6, 44, '随时', 1
-  UNION ALL SELECT '星巴克保温杯 350ml 代购全新', 3, 1, 1, '/imgs/goods/9.svg', '南校区', '快递驿站', 120.149192, 30.316078,  99, 15, 20, 47, '全天', 20
+  UNION ALL SELECT '小米电水壶 1.5L 恒温款', 3, 1, 1, '/imgs/goods/22.svg', '东校区', '宿舍楼6栋 412', 120.157780, 30.310633,  65,  7, 12, 46, '随时', 1
+  UNION ALL SELECT '宿舍折叠书桌 懒人桌', 3, 2, 1, '/imgs/goods/23.svg', '北校区', '宿舍楼7栋 108', 120.148603, 30.318618,  55,  3,  6, 44, '随时', 1
+  UNION ALL SELECT '星巴克保温杯 350ml 代购全新', 3, 1, 1, '/imgs/goods/24.svg', '南校区', '快递驿站', 120.149192, 30.316078,  99, 15, 20, 47, '全天', 20
   -- ===== 服饰鞋包 (type 4) =====
-  UNION ALL SELECT '北面冲锋衣 M码 三合一', 4, 2, 1, '/imgs/goods/10.svg', '南校区', '南区1栋 220', 120.124691, 30.336819, 320,  2,  8, 49, '晚上9点后', 1
-  UNION ALL SELECT '匡威帆布鞋 39码 高帮', 4, 1, 1, '/imgs/goods/11.svg', '东校区', '体育馆旁', 120.150526, 30.325231, 130,  1,  5, 45, '晚上8点后', 1
+  UNION ALL SELECT '北面冲锋衣 M码 三合一', 4, 2, 1, '/imgs/goods/25.svg', '南校区', '南区1栋 220', 120.124691, 30.336819, 320,  2,  8, 49, '晚上9点后', 1
+  UNION ALL SELECT '匡威帆布鞋 39码 高帮', 4, 1, 1, '/imgs/goods/26.svg', '东校区', '体育馆旁', 120.150526, 30.325231, 130,  1,  5, 45, '晚上8点后', 1
   -- ===== 运动健身 (type 5) =====
-  UNION ALL SELECT '李宁羽毛球拍 双拍装 送球', 5, 2, 1, '/imgs/goods/12.svg', '东校区', '体育馆器材室', 120.150598, 30.325251, 160,  6, 10, 47, '16:00-21:00', 1
-  UNION ALL SELECT '阿迪达斯健身手套 全新', 5, 1, 1, '/imgs/goods/13.svg', '北校区', '操场看台', 120.149093, 30.324666,  40,  2,  3, 44, '清晨/晚间', 1
+  UNION ALL SELECT '李宁羽毛球拍 双拍装 送球', 5, 2, 1, '/imgs/goods/27.svg', '东校区', '体育馆器材室', 120.150598, 30.325251, 160,  6, 10, 47, '16:00-21:00', 1
+  UNION ALL SELECT '阿迪达斯健身手套 全新', 5, 1, 1, '/imgs/goods/28.svg', '北校区', '操场看台', 120.149093, 30.324666,  40,  2,  3, 44, '清晨/晚间', 1
   -- ===== 美妆个护 (type 6) =====
-  UNION ALL SELECT '兰蔻小黑瓶精华 50ml 全新', 6, 2, 1, '/imgs/goods/14.svg', '南校区', '澡堂门口', 120.158530, 30.310002, 380,  8, 16, 48, '全天', 1
-  UNION ALL SELECT '飞利浦电动牙刷 HX6730', 6, 1, 1, '/imgs/goods/1.svg', '北校区', '快递柜旁', 120.149830, 30.312110, 150,  5,  7, 46, '随时', 1
+  UNION ALL SELECT '兰蔻小黑瓶精华 50ml 全新', 6, 2, 1, '/imgs/goods/29.svg', '南校区', '澡堂门口', 120.158530, 30.310002, 380,  8, 16, 48, '全天', 1
+  UNION ALL SELECT '飞利浦电动牙刷 HX6730', 6, 1, 1, '/imgs/goods/30.svg', '北校区', '快递柜旁', 120.149830, 30.312110, 150,  5,  7, 46, '随时', 1
   -- ===== 其他 (type 7) =====
-  UNION ALL SELECT '民谣吉他 41寸 带琴包', 7, 2, 1, '/imgs/goods/2.svg', '南校区', '社团活动室', 120.130453, 30.327655, 280,  3,  9, 49, '全天', 1
-  UNION ALL SELECT '宿舍小冰箱 50L 可冷冻', 7, 1, 1, '/imgs/goods/3.svg', '东校区', '宿舍楼9栋 101', 120.128958, 30.337252, 220,  4, 11, 47, '全天', 1
+  UNION ALL SELECT '民谣吉他 41寸 带琴包', 7, 2, 1, '/imgs/goods/31.svg', '南校区', '社团活动室', 120.130453, 30.327655, 280,  3,  9, 49, '全天', 1
+  UNION ALL SELECT '宿舍小冰箱 50L 可冷冻', 7, 1, 1, '/imgs/goods/32.svg', '东校区', '宿舍楼9栋 101', 120.128958, 30.337252, 220,  4, 11, 47, '全天', 1
 ) AS new_goods
 WHERE NOT EXISTS (
   SELECT 1 FROM `tb_goods` g WHERE g.`name` = new_goods.n AND g.`seller_id` = new_goods.s
@@ -92,3 +92,30 @@ SELECT COUNT(*) AS total_goods,
        SUM(CASE WHEN `stock` > 1 THEN 1 ELSE 0 END) AS multi_stock_goods,
        SUM(CASE WHEN `seckill_end` IS NOT NULL THEN 1 ELSE 0 END) AS seckill_goods
 FROM `tb_goods` WHERE `status` = 1;
+
+-- --------------------------------------------------------------------
+--  4. 配图修正（幂等）：早期这里是"顺序循环复用"已有图片，
+--     而每张图里都印着商品名，导致图上的商品和标题对不上。
+--     现改为按商品名指向各自专属图片；重跑本脚本即可修正已有库。
+-- --------------------------------------------------------------------
+UPDATE `tb_goods` g
+  JOIN (
+    SELECT '罗技 MX Master 3S 无线鼠标' AS n, '/imgs/goods/16.svg' AS img
+    UNION ALL SELECT '索尼 WH-1000XM4 降噪耳机' AS n, '/imgs/goods/17.svg' AS img
+    UNION ALL SELECT 'Apple AirPods Pro 2 全新未拆' AS n, '/imgs/goods/18.svg' AS img
+    UNION ALL SELECT '数据结构与算法分析(Java版)' AS n, '/imgs/goods/19.svg' AS img
+    UNION ALL SELECT '雅思真题 4-18 全套 9成新' AS n, '/imgs/goods/20.svg' AS img
+    UNION ALL SELECT '考研英语黄皮书 真题全套' AS n, '/imgs/goods/21.svg' AS img
+    UNION ALL SELECT '小米电水壶 1.5L 恒温款' AS n, '/imgs/goods/22.svg' AS img
+    UNION ALL SELECT '宿舍折叠书桌 懒人桌' AS n, '/imgs/goods/23.svg' AS img
+    UNION ALL SELECT '星巴克保温杯 350ml 代购全新' AS n, '/imgs/goods/24.svg' AS img
+    UNION ALL SELECT '北面冲锋衣 M码 三合一' AS n, '/imgs/goods/25.svg' AS img
+    UNION ALL SELECT '匡威帆布鞋 39码 高帮' AS n, '/imgs/goods/26.svg' AS img
+    UNION ALL SELECT '李宁羽毛球拍 双拍装 送球' AS n, '/imgs/goods/27.svg' AS img
+    UNION ALL SELECT '阿迪达斯健身手套 全新' AS n, '/imgs/goods/28.svg' AS img
+    UNION ALL SELECT '兰蔻小黑瓶精华 50ml 全新' AS n, '/imgs/goods/29.svg' AS img
+    UNION ALL SELECT '飞利浦电动牙刷 HX6730' AS n, '/imgs/goods/30.svg' AS img
+    UNION ALL SELECT '民谣吉他 41寸 带琴包' AS n, '/imgs/goods/31.svg' AS img
+    UNION ALL SELECT '宿舍小冰箱 50L 可冷冻' AS n, '/imgs/goods/32.svg' AS img
+  ) v ON v.n = g.`name`
+SET g.`images` = v.img;
