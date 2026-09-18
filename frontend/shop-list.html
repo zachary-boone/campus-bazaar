@@ -85,6 +85,7 @@
     }
     .goods-row__loc { display: flex; align-items: center; }
     .goods-row__loc i { color: var(--primary); margin-right: 3px; }
+    .goods-row__wants { font-size: 11px; color: #FF6B6B; white-space: nowrap; }
     .badge {
       background: var(--accent); color: white;
       padding: 1px 6px; border-radius: 6px;
@@ -122,6 +123,9 @@
     <div class="sort-item" :class="{active: sortBy==='score'}" @click="sortAndQuery('score')">
       评分
     </div>
+    <div class="sort-item" :class="{active: sortBy==='wants'}" @click="sortAndQuery('wants')">
+      🔥 求购榜
+    </div>
   </div>
 
   <div class="shop-content" @scroll="onScroll">
@@ -134,7 +138,7 @@
           <span class="goods-row__loc">
             <i class="el-icon-location-information"></i>{{s.area}} · {{s.address}}
           </span>
-          <span v-if="s.comments>0"><span class="badge">已售</span>{{s.comments}}</span>
+          <span v-if="s.wants>0" class="goods-row__wants"><i style="color:#FF6B6B">♥</i> {{s.wants}} 人想要</span>
         </div>
       </div>
     </div>

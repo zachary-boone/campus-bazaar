@@ -427,6 +427,7 @@
               @click="togglePriceSort">
           价格<i :class="sortBy==='priceDesc' ? 'el-icon-bottom' : (sortBy==='priceAsc' ? 'el-icon-top' : 'el-icon-sort')"></i>
         </span>
+        <span class="feed-tab" :class="{active: sortBy==='wants'}" @click="sortGoods('wants')">🔥 求购榜</span>
       </div>
     </div>
     <div class="feed-grid">
@@ -437,7 +438,7 @@
           <div class="goods-card__price"><small>¥</small>{{g.price}}</div>
           <div class="goods-card__meta">
             <span><span class="goods-card__tag">{{g.area}}</span></span>
-            <span class="goods-card__liked"><i>♥</i> {{g.comments || 0}}</span>
+            <span class="goods-card__liked"><i>♥</i> {{g.wants || 0}}</span>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.bazaar.dto.GoodsDTO;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.Goods;
+import com.campus.bazaar.service.IGoodsLikeService;
 import com.campus.bazaar.service.IGoodsService;
 import com.campus.bazaar.utils.SystemConstants;
 import org.springframework.beans.BeanUtils;
@@ -22,6 +23,9 @@ public class GoodsController {
 
     @Resource
     public IGoodsService goodsService;
+
+    @Resource
+    private IGoodsLikeService goodsLikeService;
 
     /**
      * 根据id查询商品详情
@@ -106,6 +110,7 @@ public class GoodsController {
      *   <li>{@code priceDesc}  → 价格从高到低</li>
      *   <li>{@code comments}   → 人气（评论数）</li>
      *   <li>{@code score}      → 评分</li>
+     *   <li>{@code wants}      → 求购榜（想要人数，tb_goods.wants 计数列）</li>
      * </ul>
      */
     @GetMapping("/of/type")
@@ -135,6 +140,10 @@ public class GoodsController {
             case "score":
                 wrapper.orderByDesc("score");
                 break;
+            case "wants":
+                // 求购榜：想要人数多的排前面（wants 与 tb_goods_like 明细同事务维护）
+                wrapper.orderByDesc("wants");
+                break;
             default:
                 // 综合：先按热度，再按人气；最后用 id 兜底保证分页稳定
                 wrapper.orderByDesc("sold").orderByDesc("comments");
@@ -144,6 +153,25 @@ public class GoodsController {
 
         Page<Goods> result = goodsService.page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE), wrapper);
         return Result.ok(result.getRecords(), result.getTotal());
+    }
+
+    /**
+     * 想要/取消想要（需登录；幂等；事务内同步维护 tb_goods.wants 计数）
+     * @param isLike true=想要 false=取消
+     * @return 操作后的最新想要人数
+     */
+    @PutMapping("/like/{id}/{isLike}")
+    public Result like(@PathVariable("id") Long id, @PathVariable("isLike") Boolean isLike) {
+        return goodsLikeService.like(id, isLike);
+    }
+
+    /**
+     * 某商品的想要状态与人数（公开：未登录 liked=false）
+     * @return { liked: Boolean, wants: Integer }
+     */
+    @GetMapping("/like/{id}")
+    public Result likeStatus(@PathVariable("id") Long id) {
+        return Result.ok(goodsLikeService.status(id));
     }
 
     /**

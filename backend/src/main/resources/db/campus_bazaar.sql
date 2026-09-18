@@ -69,7 +69,8 @@ CREATE TABLE `tb_goods` (
   `y`           DOUBLE       DEFAULT NULL             COMMENT '纬度',
   `price`       BIGINT       NOT NULL                COMMENT '售价(元)',
   `sold`        INT          DEFAULT 0                COMMENT '已售出',
-  `comments`    INT          DEFAULT 0                COMMENT '想要人数',
+  `comments`    INT          DEFAULT 0                COMMENT '评论数',
+  `wants`       INT          DEFAULT 0                COMMENT '想要人数（求购榜排序依据）',
   `score`       INT          DEFAULT 50               COMMENT '评分(1-50)',
   `trade_time`  VARCHAR(64)  DEFAULT '18:00-22:00'    COMMENT '可面交时间',
   `stock`       INT          DEFAULT 1                COMMENT '库存(秒杀扣减，0为已抢光)',
@@ -323,7 +324,8 @@ WHERE `id` = 1;
 CREATE TABLE IF NOT EXISTS `tb_message` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
   `user_id`     BIGINT       NOT NULL                COMMENT '收件人用户id',
-  `type`        TINYINT      NOT NULL DEFAULT 1      COMMENT '类型：1系统 2交易 3互动',
+  `sender_id`   BIGINT                DEFAULT NULL   COMMENT '发件人用户id（仅 type=4 私信）',
+  `type`        TINYINT      NOT NULL DEFAULT 1      COMMENT '类型：1系统 2交易 3互动 4私信',
   `title`       VARCHAR(64)  NOT NULL                COMMENT '标题（列表一行显示）',
   `content`     VARCHAR(255)          DEFAULT NULL   COMMENT '正文摘要',
   `link`        VARCHAR(128)          DEFAULT NULL   COMMENT '点击跳转链接（可空）',
@@ -333,6 +335,24 @@ CREATE TABLE IF NOT EXISTS `tb_message` (
   KEY `idx_user_read`  (`user_id`, `is_read`),
   KEY `idx_user_time`  (`user_id`, `create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='站内消息';
+
+-- --------------------------------------------------------------------
+--  卖家私信对话：双向消息真相；发送时同步写一条 tb_message(type=4) 通知收件人
+--  演示数据：见同目录 upgrade-0918-chat.sql
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tb_chat_message` (
+  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `sender_id`   BIGINT       NOT NULL                COMMENT '发件人用户id',
+  `receiver_id` BIGINT       NOT NULL                COMMENT '收件人用户id',
+  `goods_id`    BIGINT                DEFAULT NULL   COMMENT '关联商品id（可空）',
+  `content`     VARCHAR(255) NOT NULL                COMMENT '消息内容',
+  `is_read`     TINYINT      NOT NULL DEFAULT 0      COMMENT '收件人是否已读：0未读 1已读',
+  `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_pair`        (`sender_id`, `receiver_id`),
+  KEY `idx_receiver`    (`receiver_id`, `is_read`),
+  KEY `idx_receiver_time` (`receiver_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='卖家私信对话';
 
 -- --------------------------------------------------------------------
 --  拼单购买：tb_group_buy（拼单）+ tb_group_member（成员）
@@ -363,6 +383,20 @@ CREATE TABLE IF NOT EXISTS `tb_group_member` (
   UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='拼单成员';
+
+-- --------------------------------------------------------------------
+--  商品"想要"明细（求购榜数据源）：tb_goods.wants 计数列与之同事务维护
+--  演示数据：见同目录 upgrade-0918-wants.sql
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tb_goods_like` (
+  `id`          BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `goods_id`    BIGINT   NOT NULL                COMMENT '商品id',
+  `user_id`     BIGINT   NOT NULL                COMMENT '想要该商品的用户id',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_goods_user` (`goods_id`, `user_id`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='商品想要（求购）明细';
 
 -- --------------------------------------------------------------------
 --  更多商品 / 秒杀 / 帖子演示数据：见同目录 seed-0913-more-goods.sql

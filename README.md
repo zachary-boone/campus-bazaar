@@ -107,13 +107,14 @@ nginx 的 `root` 是相对自身安装目录的 `html/campus-bazaar`，所以**�
 | 模块 | 接口 |
 |---|---|
 | 用户 | `/user/code` `/user/login` `/user/logout` `/user/me` `/user/info/{id}` `/user/card/{id}`（用户卡片：昵称/头像/签名 + 关注数/粉丝数 + 在售/已售数 + 是否已关注）`/user/sellers`（学长学姐专区：有在售商品的卖家列表） |
-| 商品 | `/goods/{id}` `/goods/of/type?typeId=&sortBy=`（排序：new/priceAsc/priceDesc/comments/score）`/goods/of/name` `/goods/of/seller/{id}`（某卖家在售）`/goods/of/nearby`（GEO 半径）`/goods/map`（地图：中心点+半径内商品+校区统计）`/goods/geo/rebuild`（重建 GEO 索引）`/goods/category/list` |
+| 商品 | `/goods/{id}` `/goods/of/type?typeId=&sortBy=`（排序：new/priceAsc/priceDesc/comments/score/**wants 求购榜**）`/goods/of/name` `/goods/of/seller/{id}`（某卖家在售）`/goods/of/nearby`（GEO 半径）`/goods/map`（地图：中心点+半径内商品+校区统计）`/goods/geo/rebuild`（重建 GEO 索引）`/goods/category/list` `/goods/like/{id}`（某商品的想要状态+人数，公开）`/goods/like/{id}/{isLike}`（想要/取消，幂等，事务同步 wants 计数，需登录） |
 | 帖子 | `/post/hot` `/post/of/me` `/post/of/user/{id}`（某用户发布）`/post/of/follow` `/post/likes/{id}` |
 | 运费券 | `/coupon/list/{goodsId}` `/coupon/seckill` `/coupon-order/seckill/{id}` |
 | 签到 | `/sign`（签到）`/sign/count`（连续天数）`/sign/records`（签到日历）`/sign/coupons`（我的签到运费券）`/sign/coupon`（领取满 7 天奖励） |
 | 关注 | `/follow/{id}/{isFollow}`（关注/取关，幂等，返回最新计数）`/follow/counts/{id}`（关注数/粉丝数）`/follow/following/{id}`（TA 关注的人）`/follow/followers/{id}`（TA 的粉丝）`/follow/or/not/{id}` `/follow/common/{id}` |
 | 消息 | `/messages/of/me?current=&type=`（我的消息，type：0全部 1系统 2交易 3互动）`/messages/unread/count`（未读数）`/messages/read/{id}`（单条已读，幂等+归属校验）`/messages/read/all`（全部已读，均需登录） |
 | 拼单 | `/group/active`（拼单大厅）`/group/goods/{goodsId}`（某商品的进行中拼单）`/group/create/{goodsId}`（开团，9 折/2 人成团/24h）`/group/join/{groupId}`（参团，Redisson 锁防超员，人满自动成团）`/group/of/me`（我的拼单，后三者需登录） |
+| 私信 | `/chat/send`（给卖家发私信，body: receiverId/goodsId/content，同步写一条 type=4 站内通知）`/chat/with/{userId}`（与某人的双向对话，进入即标已读，需登录） |
 
 ## 技术亮点
 

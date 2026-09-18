@@ -66,6 +66,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/goods/map",                     // 地图页数据（中心点+半径内商品+校区统计）
                         "/goods/hot",                     // 热榜
                         "/goods/{id}",                     // 商品详情
+                        "/goods/like/*",                   // 某商品的想要状态与人数（GET 单段；PUT 两段仍需登录）
                         "/post/hot",                      // 热门帖子
                         "/post/{id}",                     // 帖子详情
                         "/post/list/{goodsId}",           // 商品关联帖子

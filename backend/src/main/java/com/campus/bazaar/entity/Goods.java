@@ -91,6 +91,11 @@ public class Goods implements Serializable {
     private Integer comments;
 
     /**
+     * 想要人数（求购榜排序依据；tb_goods_like 明细的同事务计数）
+     */
+    private Integer wants;
+
+    /**
      * 评分，1~5分，乘10保存，避免小数
      */
     private Integer score;

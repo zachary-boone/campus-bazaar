@@ -32,7 +32,10 @@ public class Message implements Serializable {
     /** 收件人用户id */
     private Long userId;
 
-    /** 类型：1系统 2交易 3互动 */
+    /** 发件人用户id（仅 type=4 私信；系统消息为 null） */
+    private Long senderId;
+
+    /** 类型：1系统 2交易 3互动 4私信 */
     private Integer type;
 
     /** 标题（列表一行显示） */
