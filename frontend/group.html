@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>拼单 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+
+    .gp-wrap { padding: 12px 16px 32px; }
+
+    /* 顶部规则 banner */
+    .gp-hero {
+      border-radius: 16px; padding: 15px 16px; color: white;
+      background: linear-gradient(135deg, #FF6B6B 0%, #FFA726 100%);
+      box-shadow: 0 6px 18px rgba(255,107,107,0.28);
+    }
+    .gp-hero__title { font-size: 16px; font-weight: 800; }
+    .gp-hero__sub { font-size: 12px; opacity: .92; margin-top: 4px; line-height: 1.6; }
+
+    /* tab */
+    .gp-tabs {
+      display: flex; margin-top: 12px;
+      background: white; border-radius: 14px;
+      padding: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .gp-tabs__item {
+      flex: 1; text-align: center; padding: 9px 0;
+      font-size: 13px; color: var(--text-2);
+      border-radius: 11px; cursor: pointer; user-select: none;
+      transition: all .18s;
+    }
+    .gp-tabs__item.active {
+      background: #FFE8E5; color: #D64541; font-weight: 700;
+    }
+
+    /* 拼单卡片 */
+    .gp-list { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+    .gp-card {
+      background: white; border-radius: 16px; padding: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.045);
+      display: flex; gap: 12px; cursor: pointer;
+    }
+    .gp-card__img {
+      width: 86px; height: 86px; border-radius: 12px;
+      flex-shrink: 0; object-fit: cover; background: #F6F7F9;
+    }
+    .gp-card__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .gp-card__name {
+      font-size: 14px; font-weight: 600; line-height: 1.4;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gp-card__price-row { margin-top: 4px; display: flex; align-items: baseline; gap: 8px; }
+    .gp-card__gprice { color: #FF4D4F; font-weight: 800; font-size: 17px; }
+    .gp-card__gprice::before { content: '¥'; font-size: 12px; }
+    .gp-card__oprice { color: var(--text-3); font-size: 12px; text-decoration: line-through; }
+    .gp-card__oprice::before { content: '¥'; }
+    .gp-card__tag {
+      display: inline-block; margin-left: auto;
+      font-size: 10px; color: #FF6B6B; background: #FFF0EE;
+      border-radius: 4px; padding: 1px 5px; font-weight: 700;
+    }
+    .gp-card__meta { margin-top: auto; display: flex; align-items: center; gap: 8px; }
+    .gp-card__progress {
+      flex: 1; height: 6px; border-radius: 3px; background: #F0F1F3; overflow: hidden;
+    }
+    .gp-card__progress i {
+      display: block; height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, #FF6B6B, #FFA726);
+      transition: width .3s;
+    }
+    .gp-card__num { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+    .gp-card__left { font-size: 11px; color: #FF9F43; white-space: nowrap; }
+    .gp-card__role {
+      font-size: 10px; border-radius: 4px; padding: 1px 5px; font-weight: 700;
+      background: #E8F5EE; color: #07A254;
+    }
+
+    /* 已成团/已过期徽标 */
+    .gp-badge {
+      font-size: 10px; border-radius: 4px; padding: 1px 6px; font-weight: 700; white-space: nowrap;
+    }
+    .gp-badge.ok { background: #E8F5EE; color: #07A254; }
+    .gp-badge.off { background: #F0F1F3; color: var(--text-3); }
+
+    .gp-empty { text-align: center; padding: 46px 0 30px; color: var(--text-3); font-size: 13px; }
+    .gp-empty__icon { font-size: 36px; margin-bottom: 10px; }
+    .gp-tip { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 16px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">拼单专场</div>
+    <div class="app-bar__action"></div>
+  </div>
+
+  <div class="gp-wrap">
+    <!-- 规则说明 -->
+    <div class="gp-hero">
+      <div class="gp-hero__title">🎁 和同学拼着买，立省 10%</div>
+      <div class="gp-hero__sub">
+        拼单价一律 9 折 · 2 人成团 · 24 小时内凑齐<br>
+        到期没凑齐自动过期，随时可以在商品页重新开团
+      </div>
+    </div>
+
+    <!-- tab -->
+    <div class="gp-tabs">
+      <div class="gp-tabs__item" :class="{active: tab==='active'}" @click="switchTab('active')">进行中</div>
+      <div class="gp-tabs__item" :class="{active: tab==='mine'}" @click="switchTab('mine')">我的拼单</div>
+    </div>
+
+    <!-- 拼单列表 -->
+    <div class="gp-list" v-if="list.length">
+      <div class="gp-card" v-for="g in list" :key="g.id" @click="toGoods(g)">
+        <img class="gp-card__img" :src="g.goodsImg || '/imgs/goods/0.svg'" @error="onImgErr">
+        <div class="gp-card__body">
+          <div class="gp-card__name">{{ g.goodsName }}</div>
+          <div class="gp-card__price-row">
+            <span class="gp-card__gprice">{{ g.groupPrice }}</span>
+            <span class="gp-card__oprice">{{ g.price }}</span>
+            <span class="gp-card__tag">9折</span>
+            <span class="gp-badge ok" v-if="g.status === 2">已成团</span>
+            <span class="gp-badge off" v-else-if="g.status === 3">已过期</span>
+            <span class="gp-card__role" v-if="g.myRole">{{ g.myRole === 'leader' ? '我发起的' : '我参加的' }}</span>
+          </div>
+          <div class="gp-card__meta">
+            <div class="gp-card__progress" v-if="g.status === 1">
+              <i :style="{width: progress(g)}"></i>
+            </div>
+            <span class="gp-card__num">{{ g.joinedNum }}/{{ g.requiredNum }} 人</span>
+            <span class="gp-card__left" v-if="g.status === 1 && g.remainMs > 0">
+              {{ remainText(g.remainMs) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="gp-empty" v-if="!loading && !list.length">
+      <div class="gp-empty__icon">{{ tab === 'mine' ? '🧾' : '🎁' }}</div>
+      <template v-if="tab === 'mine'">
+        {{ logged ? '还没参加过拼单，去「进行中」看看吧' : '登录后可查看我的拼单' }}
+      </template>
+      <template v-else>暂无进行中的拼单，去商品页发起一个吧</template>
+    </div>
+
+    <div class="gp-tip">
+      拼单成功后按拼单价完成购买 · 校园同校面对面交易更放心
+    </div>
+  </div>
+
+  <foot-bar :active-btn="1"></foot-bar>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/footer.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      loading: true,
+      logged: false,
+      tab: 'active',     // active=进行中 mine=我的拼单
+      list: [],
+      timer: null
+    },
+    created() {
+      this.logged = !!sessionStorage.getItem('token');
+      this.loadList();
+      // 每分钟刷新一次剩余时间（倒计时以分钟粒度显示）
+      this.timer = setInterval(() => this.refreshRemain(), 60_000);
+    },
+    beforeDestroy() { if (this.timer) clearInterval(this.timer); },
+    methods: {
+      goBack() { history.length > 1 ? history.back() : (location.href = '/index.html'); },
+      onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
+      switchTab(t) {
+        if (this.tab === t) return;
+        // 未登录点"我的拼单"：明确提示再跳登录，避免被 401 拦截器静默跳走
+        if (t === 'mine' && !this.logged) {
+          util.toast('请先登录后查看我的拼单', 'info');
+          setTimeout(() => { location.href = '/login.html'; }, 600);
+          return;
+        }
+        this.tab = t;
+        this.loadList();
+      },
+      progress(g) { return Math.min(100, Math.round(g.joinedNum / g.requiredNum * 100)) + '%'; },
+      remainText(ms) {
+        const min = Math.ceil(ms / 60000);
+        if (min < 60) return '剩 ' + min + ' 分钟';
+        return '剩 ' + Math.floor(min / 60) + ' 小时 ' + (min % 60) + ' 分';
+      },
+
+      loadList() {
+        this.loading = true;
+        const url = this.tab === 'mine' ? '/group/of/me' : '/group/active';
+        axios.get(url)
+          .then(({ data }) => { this.list = this.decorate(data || []); })
+          .catch(err => {
+            this.list = [];
+            util.toast((err && err.toString && err.toString()) || '拼单列表加载失败', 'error');
+          })
+          .then(() => { this.loading = false; });
+      },
+
+      /** 后端返回 expireMs，这里换算成 remainMs 并按分钟粒度刷新 */
+      decorate(rows) {
+        const now = Date.now();
+        rows.forEach(g => {
+          g.remainMs = g.expireMs ? Math.max(0, g.expireMs - now) : 0;
+        });
+        return rows;
+      },
+      refreshRemain() {
+        const now = Date.now();
+        this.list.forEach(g => { if (g.expireMs) g.remainMs = Math.max(0, g.expireMs - now); });
+      },
+
+      /** 点卡片 → 商品详情（那里可以参团/看团），已结束的也进详情看商品 */
+      toGoods(g) {
+        location.href = '/shop-detail.html?id=' + g.goodsId;
+      }
+    }
+  });
+</script>
+</body>
+</html>

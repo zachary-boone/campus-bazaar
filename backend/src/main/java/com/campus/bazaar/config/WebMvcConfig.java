@@ -79,6 +79,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/follow/counts/*",               // 关注数/粉丝数（个人中心、他人主页）
                         "/follow/following/*",            // TA 关注的人
                         "/follow/followers/*",            // TA 的粉丝
+                        "/group/active",                  // 拼单大厅（进行中的拼单列表）
+                        "/group/goods/*",                 // 某商品的进行中拼单（详情页参团入口）
                         "/common/{id}",                   // 公共图片
                         "/error",
                         "/favicon.ico",

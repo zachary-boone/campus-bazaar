@@ -113,6 +113,7 @@ nginx 的 `root` 是相对自身安装目录的 `html/campus-bazaar`，所以**�
 | 签到 | `/sign`（签到）`/sign/count`（连续天数）`/sign/records`（签到日历）`/sign/coupons`（我的签到运费券）`/sign/coupon`（领取满 7 天奖励） |
 | 关注 | `/follow/{id}/{isFollow}`（关注/取关，幂等，返回最新计数）`/follow/counts/{id}`（关注数/粉丝数）`/follow/following/{id}`（TA 关注的人）`/follow/followers/{id}`（TA 的粉丝）`/follow/or/not/{id}` `/follow/common/{id}` |
 | 消息 | `/messages/of/me?current=&type=`（我的消息，type：0全部 1系统 2交易 3互动）`/messages/unread/count`（未读数）`/messages/read/{id}`（单条已读，幂等+归属校验）`/messages/read/all`（全部已读，均需登录） |
+| 拼单 | `/group/active`（拼单大厅）`/group/goods/{goodsId}`（某商品的进行中拼单）`/group/create/{goodsId}`（开团，9 折/2 人成团/24h）`/group/join/{groupId}`（参团，Redisson 锁防超员，人满自动成团）`/group/of/me`（我的拼单，后三者需登录） |
 
 ## 技术亮点
 

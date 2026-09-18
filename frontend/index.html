@@ -408,13 +408,13 @@
     </div>
 
     <!-- 拼单 banner -->
-    <div class="groupon-banner">
+    <div class="groupon-banner" @click="toGroupon" style="cursor:pointer">
       <div class="groupon-banner__icon">🎁</div>
       <div class="groupon-banner__text">
         <h4>同班同学一起收 · 拼单包邮</h4>
-        <p>每满 3 件免邮 · 拼单成功送运费券</p>
+        <p>拼单价 9 折 · 2 人成团 · 24 小时有效</p>
       </div>
-      <el-button size="mini" type="danger" round>去拼单</el-button>
+      <el-button size="mini" type="danger" round @click.stop="toGroupon">去拼单</el-button>
     </div>
 
     <!-- 在售商品 -->
@@ -582,7 +582,10 @@
       toMap(area) {
         location.href = area ? ('/map.html?area=' + encodeURIComponent(area)) : '/map.html';
       },
-      toGroupon() { this.$message.success('🎁 拼单专区即将上线'); },
+      toGroupon() {
+        // 拼单专场：进行中的拼单列表 + 我的拼单（拼单价 9 折、2 人成团）
+        location.href = "/group.html";
+      },
       toSenior() {
         // 「学长学姐」= 学长学姐专区：列出有在售商品的卖家，可进主页看 TA 的全部在售
         location.href = "/senior-list.html";

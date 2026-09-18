@@ -335,6 +335,36 @@ CREATE TABLE IF NOT EXISTS `tb_message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='站内消息';
 
 -- --------------------------------------------------------------------
+--  拼单购买：tb_group_buy（拼单）+ tb_group_member（成员）
+--  规则：拼单价 9 折 / 2 人成团 / 24h 有效 / Redisson 锁 + 唯一键防超员
+--  演示数据：见同目录 upgrade-0918-groupbuy.sql
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tb_group_buy` (
+  `id`             BIGINT        NOT NULL AUTO_INCREMENT COMMENT '拼单id',
+  `goods_id`       BIGINT        NOT NULL                COMMENT '商品id',
+  `leader_user_id` BIGINT        NOT NULL                COMMENT '团长用户id',
+  `group_price`    BIGINT        NOT NULL                COMMENT '拼单价（9折，单位元）',
+  `required_num`   INT           NOT NULL DEFAULT 2      COMMENT '成团所需人数',
+  `status`         TINYINT       NOT NULL DEFAULT 1      COMMENT '1拼单中 2已成团 3已过期',
+  `create_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '开团时间',
+  `expire_time`    DATETIME      NOT NULL                COMMENT '成团截止时间（开团+24h）',
+  PRIMARY KEY (`id`),
+  KEY `idx_goods_status` (`goods_id`, `status`),
+  KEY `idx_status_expire` (`status`, `expire_time`),
+  KEY `idx_leader` (`leader_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='拼单';
+
+CREATE TABLE IF NOT EXISTS `tb_group_member` (
+  `id`          BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `group_id`    BIGINT   NOT NULL                COMMENT '拼单id',
+  `user_id`     BIGINT   NOT NULL                COMMENT '参团用户id',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '参团时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='拼单成员';
+
+-- --------------------------------------------------------------------
 --  更多商品 / 秒杀 / 帖子演示数据：见同目录 seed-0913-more-goods.sql
 --  （幂等可重复执行，已建库环境直接跑该脚本即可）
 -- --------------------------------------------------------------------

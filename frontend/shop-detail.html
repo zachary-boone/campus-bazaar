@@ -285,6 +285,19 @@
       background: linear-gradient(135deg, #FF6B6B, #E53935);
       box-shadow: 0 4px 12px rgba(229,57,53,.35);
     }
+    /* 拼单按钮：橙色系与秒杀/购买区分 */
+    .action-btn--group {
+      flex: 0 0 auto;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #FF9F43, #FF7043);
+      box-shadow: 0 4px 12px rgba(255,112,67,.35);
+      font-size: 13px;
+    }
+    /* 拼单已成团：绿色展示态 */
+    .action-btn--group.is-ok {
+      background: linear-gradient(135deg, #07C160, #059669);
+      box-shadow: 0 4px 12px rgba(7,193,96,.3);
+    }
     /* 已抢光 / 不可售状态 */
     .action-btn.is-off {
       background: #B0BEC5;
@@ -451,6 +464,12 @@
             class="action-btn action-btn--seckill"
             :disabled="submitting || !canBuy"
             @click="seckillGoods">⚡ 秒杀 ¥{{goods.price}}</button>
+    <!-- 拼单按钮：状态机（发起/参与/等待/已成团） -->
+    <button v-if="canBuy && groupBtn.visible"
+            class="action-btn action-btn--group"
+            :class="{'is-off': groupBtn.disabled && !groupBtn.ok, 'is-ok': groupBtn.ok}"
+            :disabled="groupBtn.disabled || groupJoining"
+            @click="doGroup">{{ groupBtn.text }}</button>
     <!-- 购买按钮：始终存在，按商品状态自动置灰 -->
     <button class="action-btn action-btn--buy"
             :class="{'is-off': !canBuy}"
@@ -479,7 +498,9 @@
       following: false,
       meId: null,          // 当前登录用户，用于判断"是否自己的商品"
       submitting: false,   // 下单/秒杀进行中，防连点
-      payDialogOpen: false // 支付确认框是否已打开，避免轮询期间重复弹框
+      payDialogOpen: false, // 支付确认框是否已打开，避免轮询期间重复弹框
+      groupInfo: null,     // 该商品进行中的拼单（无则为 null）
+      groupJoining: false  // 拼单操作进行中，防连点
     },
     computed: {
       /** 是否展示秒杀模块：配置了秒杀时间窗，或库存大于 1 的批量商品 */
@@ -513,6 +534,27 @@
         if (stock <= 0) return '本轮已抢光，下次再来';
         if (g.seckillEnd) return '抢完即止 · ' + this.formatTime(g.seckillEnd) + ' 结束';
         return '每人限购 1 件，抢完即止';
+      },
+      /** 拼单按钮状态机（groupInfo = 该商品最近一次拼单）：
+          无团/已过期 → 发起；进行中+我未参与 → 参与；进行中+我发起/我参加 → 等待（禁用）；已成团 → 展示成功（禁用） */
+      groupBtn() {
+        const gi = this.groupInfo;
+        if (!gi || gi.status === 3) {
+          return { visible: true, text: '🎁 发起拼单 9折', act: 'create' };
+        }
+        if (gi.status === 2) {
+          return { visible: true, text: '🎉 拼单已成功 · ¥' + gi.groupPrice + ' × ' + gi.requiredNum + '人',
+                   disabled: true, act: null, ok: true };
+        }
+        // 进行中
+        const left = Math.max(1, (gi.requiredNum || 2) - (gi.joinedNum || 0));
+        if (gi.myRole === 'leader') {
+          return { visible: true, text: '🎁 我发起的拼单 · 还差' + left + '人', disabled: true, act: null };
+        }
+        if (gi.myRole === 'member') {
+          return { visible: true, text: '🎁 已参与拼单 · 还差' + left + '人', disabled: true, act: null };
+        }
+        return { visible: true, text: '🎁 参与拼单 ¥' + gi.groupPrice + '（还差' + left + '人）', act: 'join' };
       }
     },
     created() {
@@ -521,6 +563,8 @@
       this.querySimilar(id);
       this.seedMsgs();
       this.queryMe();
+      // 拼单：登录与否都能看团（接口公开），带着视角好隐藏"我发起的/我参加的"
+      this.loadGroup(id);
     },
     methods: {
       goBack() { history.back(); },
@@ -598,6 +642,59 @@
           return false;
         }
         return true;
+      },
+
+      // ==================== 拼单（9 折 / 2 人成团 / 24h） ====================
+      /** 该商品最近的拼单（公开接口，未登录也能看；含已成团/已过期，用于状态展示） */
+      loadGroup(id) {
+        axios.get('/group/goods/' + id)
+          .then(({ data }) => { this.groupInfo = (data && data.length) ? data[0] : null; })
+          .catch(() => { this.groupInfo = null; });
+      },
+
+      doGroup() {
+        const act = this.groupBtn && this.groupBtn.act;
+        if (!act || this.groupJoining) return;
+        if (!this.ensureLogin()) return;
+        const g = this.goods;
+        const gi = this.groupInfo;
+        this.util.closeAllPopups();
+
+        // 参团
+        if (act === 'join' && gi) {
+          this.groupJoining = true;
+          axios.post('/group/join/' + gi.id)
+            .then(({ data }) => {
+              util.toast('🎉 参团成功，拼单凑齐即按 ¥' + gi.groupPrice + ' 成交', 'success');
+              this.loadGroup(util.getUrlParam('id'));
+            })
+            .catch(err => util.toast((err && err.toString && err.toString()) || '参团失败', 'error'))
+            .then(() => { this.groupJoining = false; });
+          return;
+        }
+
+        // 开团（拼单价 = 9 折，向上取整）
+        const gPrice = Math.ceil(g.price * 0.9);
+        this.$confirm(
+          `发起「${g.name}」的拼单？<br>` +
+          `拼单价 <b style="color:#FF4D4F">¥${gPrice}</b>（原价 ¥${g.price}）· 2 人成团 · 24 小时有效<br>` +
+          `<span style="font-size:12px;color:#909399">你将成为团长，等 1 位同学加入即成团</span>`,
+          '发起拼单', {
+            dangerouslyUseHTMLString: true,
+            confirmButtonText: '发起拼单',
+            cancelButtonText: '再想想',
+            closeOnClickModal: true,
+            closeOnPressEscape: true
+          }).then(() => {
+            this.groupJoining = true;
+            axios.post('/group/create/' + g.id)
+              .then(({ data }) => {
+                util.toast('🎉 开团成功！把商品分享给同学，凑齐 2 人即成团', 'success');
+                this.loadGroup(g.id);
+              })
+              .catch(err => util.toast((err && err.toString && err.toString()) || '开团失败', 'error'))
+              .then(() => { this.groupJoining = false; });
+          }).catch(() => {});
       },
 
       // ==================== 立即购买（同步下单，POST /order） ====================
