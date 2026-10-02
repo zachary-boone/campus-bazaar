@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>发布商品 · 校园小黑市</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/app.css" rel="stylesheet">
+  <style>
+    body { background: var(--bg); }
+    .page { height: calc(100% - 56px); overflow-y: auto; padding: 12px 14px 28px; }
+    .form-section { margin-bottom: 12px; padding: 14px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-sm); }
+    .section-title { margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+    .field { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid #F0F1F3; }
+    .field:last-child { border-bottom: 0; }
+    .field label { width: 74px; flex: 0 0 74px; color: var(--text-2); font-size: 13px; }
+    .field input, .field select { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-1); font: inherit; font-size: 14px; }
+    .field input::placeholder { color: #AAB1BA; }
+    .field--top { align-items: flex-start; padding-top: 14px; }
+    .image-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+    .image-add, .image-item { position: relative; width: 76px; height: 76px; flex: 0 0 76px; border-radius: 8px; overflow: hidden; }
+    .image-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px dashed #CBD2D9; color: var(--text-3); font-size: 11px; cursor: pointer; }
+    .image-add i { font-size: 20px; }
+    .image-input { display: none; }
+    .image-item img { width: 100%; height: 100%; display: block; object-fit: cover; background: #F1F3F5; }
+    .image-remove { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border: 0; border-radius: 50%; color: #fff; background: rgba(0,0,0,.58); font-size: 15px; line-height: 22px; text-align: center; }
+    .image-note, .form-note { margin-top: 8px; color: var(--text-3); font-size: 11px; line-height: 1.5; }
+    .submit { width: 100%; min-height: 46px; border: 0; border-radius: 8px; color: #fff; background: var(--primary); font-size: 15px; font-weight: 700; }
+    .submit:disabled { opacity: .55; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-bar">
+    <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="app-bar__title">发布商品</div>
+    <div class="app-bar__action" @click="submit" style="font-size:13px">发布</div>
+  </div>
+  <main class="page">
+    <section class="form-section">
+      <h2 class="section-title">商品图片</h2>
+      <div class="image-tools">
+        <label class="image-add" v-if="images.length < 9" for="goodsImages"><i class="el-icon-camera"></i><span>添加图片</span></label>
+        <input id="goodsImages" class="image-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple @change="selectImages">
+        <div class="image-item" v-for="(image,index) in images" :key="image.key">
+          <img :src="image.preview" @error="onImageError">
+          <button class="image-remove" type="button" @click="removeImage(index)" :aria-label="'删除第' + (index + 1) + '张图片'">×</button>
+        </div>
+      </div>
+      <div class="image-note">最多 9 张，每张不超过 5MB；第一张作为商品封面。</div>
+    </section>
+
+    <section class="form-section">
+      <h2 class="section-title">商品信息</h2>
+      <div class="field"><label for="goodsName">商品名称</label><input id="goodsName" v-model.trim="form.name" maxlength="128" placeholder="例如：九成新蓝牙耳机"></div>
+      <div class="field"><label for="goodsType">商品分类</label><select id="goodsType" v-model="form.typeId"><option value="">请选择分类</option><option v-for="type in types" :key="type.id" :value="String(type.id)">{{type.name}}</option></select></div>
+      <div class="field"><label for="goodsPrice">出售价格</label><input id="goodsPrice" v-model="form.price" type="number" min="1" step="1" inputmode="numeric" placeholder="填写价格"><span>元</span></div>
+      <div class="field"><label for="goodsStock">商品数量</label><input id="goodsStock" v-model="form.stock" type="number" min="1" step="1" inputmode="numeric" placeholder="默认 1 件"><span>件</span></div>
+    </section>
+
+    <section class="form-section">
+      <h2 class="section-title">交易信息</h2>
+      <div class="field"><label for="goodsArea">所在校区</label><input id="goodsArea" v-model.trim="form.area" maxlength="64" placeholder="例如：南校区"></div>
+      <div class="field"><label for="goodsAddress">交易地点</label><input id="goodsAddress" v-model.trim="form.address" maxlength="128" placeholder="例如：宿舍楼 3 号楼"></div>
+      <div class="field"><label for="goodsTime">交易时间</label><input id="goodsTime" v-model.trim="form.tradeTime" maxlength="64" placeholder="例如：每天 18:00-22:00"></div>
+      <p class="form-note">发布后，商品会出现在首页在售列表和个人主页的“我发布的”中。</p>
+    </section>
+
+    <button class="submit" type="button" @click="submit" :disabled="submitting">{{submitting ? '正在发布…' : '发布商品'}}</button>
+  </main>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: '#app',
+    data: {
+      util,
+      types: [],
+      images: [],
+      nextImageKey: 1,
+      submitting: false,
+      form: { name: '', typeId: '', price: '', stock: '1', area: '', address: '', tradeTime: '18:00-22:00' }
+    },
+    created() {
+      if (!sessionStorage.getItem('token')) {
+        this.$message.error('请先登录');
+        setTimeout(() => { location.href = '/login.html'; }, 300);
+        return;
+      }
+      axios.get('/goods/category/list').then(({data}) => { this.types = data || []; })
+        .catch(err => this.util.toast((err && err.toString && err.toString()) || '商品分类加载失败', 'error'));
+    },
+    methods: {
+      goBack() { history.back(); },
+      onImageError(event) { event.target.src = '/imgs/goods/0.svg'; },
+      selectImages(event) {
+        const files = Array.from(event.target.files || []);
+        event.target.value = '';
+        for (const file of files) {
+          if (this.images.length >= 9) break;
+          if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+            this.$message.error(file.name + ' 格式不支持或超过 5MB');
+            continue;
+          }
+          this.images.push({ key: this.nextImageKey++, file, preview: URL.createObjectURL(file), url: '' });
+        }
+      },
+      removeImage(index) {
+        const image = this.images[index];
+        if (image && image.preview.indexOf('blob:') === 0) URL.revokeObjectURL(image.preview);
+        this.images.splice(index, 1);
+      },
+      uploadImages() {
+        return Promise.all(this.images.map(image => {
+          if (image.url) return Promise.resolve(image.url);
+          const body = new FormData();
+          body.append('file', image.file);
+          return axios.post('/upload/post', body, { timeout: 30000 }).then(({data}) => {
+            image.url = '/imgs' + data;
+            return image.url;
+          });
+        }));
+      },
+      submit() {
+        if (this.submitting) return;
+        if (!this.form.name || !this.form.typeId || !this.form.price || Number(this.form.price) < 1 || !this.form.area) {
+          this.$message.error('请填写商品名称、分类、价格和所在校区');
+          return;
+        }
+        this.submitting = true;
+        this.uploadImages().then(imageUrls => axios.post('/goods', {
+          name: this.form.name,
+          typeId: Number(this.form.typeId),
+          price: Math.round(Number(this.form.price)),
+          stock: Math.max(1, Math.round(Number(this.form.stock) || 1)),
+          area: this.form.area,
+          address: this.form.address,
+          tradeTime: this.form.tradeTime,
+          images: imageUrls.join(',')
+        }, { timeout: 15000 })).then(() => {
+          this.$message.success('商品发布成功');
+          setTimeout(() => { location.href = '/info.html?tab=1'; }, 500);
+        }).catch(err => {
+          this.util.toast((err && err.toString && err.toString()) || '发布失败，请重试', 'error');
+        }).finally(() => { this.submitting = false; });
+      }
+    }
+  });
+</script>
+</body>
+</html>

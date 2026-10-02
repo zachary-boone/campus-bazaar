@@ -40,7 +40,7 @@ Vue.component("footBar", {
   methods: {
     toPage(i) {
       if (i === 0) {
-        location.href = "/post-edit.html"
+        location.href = "/goods-edit.html"
       } else if (i === 1) {
         location.href = "/"
       } else if (i === 2) {

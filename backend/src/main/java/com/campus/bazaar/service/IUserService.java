@@ -2,6 +2,7 @@ package com.campus.bazaar.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.campus.bazaar.dto.LoginFormDTO;
+import com.campus.bazaar.dto.ProfileUpdateDTO;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.entity.User;
 import com.campus.bazaar.entity.UserInfo;
@@ -56,6 +57,8 @@ public interface IUserService extends IService<User> {
      * @return 操作结果
      */
     Result updateNickName(String nickName);
+
+    Result updateProfile(ProfileUpdateDTO profile, String token);
 
     /**
      * 修改密码

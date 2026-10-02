@@ -18,9 +18,26 @@
       width: 100%;
       aspect-ratio: 4/3;
       background: #ECEFF1;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
     }
+    .hero-nav {
+      position: absolute;
+      top: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(0,0,0,.38);
+      color: white;
+      font-size: 16px;
+      transform: translateY(-50%);
+    }
+    .hero-nav--prev { left: 12px; }
+    .hero-nav--next { right: 12px; }
     .hero-dots {
       position: absolute;
       bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -115,8 +132,15 @@
       font-size: 12px; color: var(--text-2);
       margin-top: 4px;
       display: flex; align-items: center;
+      min-width: 0;
     }
     .seller-card__loc i { color: var(--primary); margin-right: 3px; }
+    .seller-card__address {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .btn-follow {
       background: var(--primary-light);
       color: var(--primary-dark);
@@ -330,9 +354,12 @@
   <div class="detail-scroll">
 
     <!-- 大图 + 指示 -->
-    <div style="position:relative">
-      <img class="hero-img" :src="goods.img || '/imgs/goods/0.svg'" @error="onImgErr">
-      <div class="hero-dots">1 / 1</div>
+    <div style="position:relative; overflow:hidden; touch-action:pan-y"
+         @touchstart="onGalleryTouchStart" @touchend="onGalleryTouchEnd">
+      <img class="hero-img" :src="galleryImages[imageIndex] || '/imgs/goods/0.svg'" @error="onImgErr">
+      <button v-if="galleryImages.length > 1" class="hero-nav hero-nav--prev" @click="moveImage(-1)" aria-label="上一张图片"><i class="el-icon-arrow-left"></i></button>
+      <button v-if="galleryImages.length > 1" class="hero-nav hero-nav--next" @click="moveImage(1)" aria-label="下一张图片"><i class="el-icon-arrow-right"></i></button>
+      <div class="hero-dots">{{imageIndex + 1}} / {{galleryImages.length}}</div>
     </div>
 
     <!-- 价格信息 -->
@@ -369,7 +396,8 @@
           <span class="verified">学长认证</span>
         </div>
         <div class="seller-card__loc">
-          <i class="el-icon-location-information"></i>{{goods.address || '紫荆宿舍楼 3号楼 519'}
+          <i class="el-icon-location-information"></i>
+          <span class="seller-card__address">{{formatAddress(goods.address) || '面交地点与卖家协商'}}</span>
         </div>
       </div>
       <button class="btn-follow" :class="{'is-following': following}" @click="toggleFollow">
@@ -469,6 +497,9 @@
     data: {
       util,
       goods: {},
+      galleryImages: [],
+      imageIndex: 0,
+      galleryTouchX: null,
       seller: {},
       msgs: [],
       msgText: '',
@@ -553,6 +584,47 @@
         if (!this.goods.price) return '九成新';
         return this.goods.price > 1000 ? '九成新' : this.goods.price > 100 ? '九成新' : '全新';
       },
+      parseImages(value) {
+        if (Array.isArray(value)) return value.filter(Boolean);
+        const raw = String(value || '').trim();
+        if (!raw) return [];
+        if (raw.charAt(0) === '[') {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.map(item => typeof item === 'string' ? item : (item.url || item.src || '')).filter(Boolean);
+          } catch (e) {}
+        }
+        return raw.split(',').map(item => item.trim()).filter(Boolean);
+      },
+      moveImage(offset) {
+        const count = this.galleryImages.length;
+        if (count > 1) this.imageIndex = (this.imageIndex + offset + count) % count;
+      },
+      onGalleryTouchStart(event) {
+        this.galleryTouchX = event.changedTouches[0].clientX;
+      },
+      onGalleryTouchEnd(event) {
+        if (this.galleryTouchX == null) return;
+        const distance = event.changedTouches[0].clientX - this.galleryTouchX;
+        if (Math.abs(distance) > 45) this.moveImage(distance < 0 ? 1 : -1);
+        this.galleryTouchX = null;
+      },
+      formatAddress(value) {
+        if (!value) return '';
+        let address = value;
+        if (typeof address === 'string') {
+          const raw = address.trim();
+          if (!raw || raw === '{}' || raw === '[]') return '';
+          if (raw.charAt(0) === '{') {
+            try { address = JSON.parse(raw); } catch (e) { address = raw; }
+          }
+        }
+        if (address && typeof address === 'object') {
+          address = [address.area, address.campus, address.dorm, address.building, address.room, address.address, address.name]
+            .filter(Boolean).join(' ');
+        }
+        return String(address).replace(/[{}\[\]"]/g, '').replace(/\s*\|\|\s*/g, ' ').replace(/\s+/g, ' ').trim();
+      },
       /** 秒杀结束时间格式化（yyyy-MM-dd HH:mm） */
       formatTime(v) {
         if (!v) return '';
@@ -563,7 +635,9 @@
         axios.get("/goods/" + id)
           .then(({data}) => {
             this.goods = data;
-            this.goods.img = (data.images||'').split(',')[0] || '/imgs/goods/0.svg';
+            this.galleryImages = this.parseImages(data.images);
+            if (!this.galleryImages.length) this.galleryImages = ['/imgs/goods/0.svg'];
+            this.imageIndex = 0;
             this.goods.content = '';
             // 卖家用接口返回的真实信息
             this.seller = {

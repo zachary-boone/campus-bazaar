@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.campus.bazaar.dto.LoginFormDTO;
+import com.campus.bazaar.dto.ProfileUpdateDTO;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.dto.UserCardDTO;
 import com.campus.bazaar.entity.Goods;
@@ -269,6 +270,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String token = UserHolder.getUser() != null ? null : null; // 需要从其他地方获取token
         // 注意：这里简化处理，实际应该更新Redis缓存
 
+        return Result.ok();
+    }
+
+    @Override
+    @Transactional
+    public Result updateProfile(ProfileUpdateDTO profile, String token) {
+        Long userId = UserHolder.getUserId();
+        if (userId == null) return Result.fail("请先登录");
+        if (profile == null || StrUtil.isBlank(profile.getNickName()) || profile.getNickName().trim().length() > 20) {
+            return Result.fail("昵称不能为空且不能超过 20 个字符");
+        }
+        if (profile.getGender() == null || profile.getGender() < 0 || profile.getGender() > 2) {
+            return Result.fail("性别选项无效");
+        }
+        if (profile.getIntroduce() != null && profile.getIntroduce().length() > 255) {
+            return Result.fail("个人介绍不能超过 255 个字符");
+        }
+        if (profile.getCity() != null && profile.getCity().length() > 64) {
+            return Result.fail("所在校区不能超过 64 个字符");
+        }
+
+        User user = new User();
+        user.setId(userId);
+        user.setNickName(profile.getNickName().trim());
+        user.setIcon(StrUtil.blankToDefault(profile.getIcon(), "/imgs/icons/default-icon.svg"));
+        user.setUpdateTime(LocalDateTime.now());
+        updateById(user);
+
+        UserInfo info = userInfoService.getById(userId);
+        boolean createInfo = info == null;
+        if (createInfo) {
+            info = new UserInfo().setUserId(userId).setCreateTime(LocalDateTime.now());
+            info.setFans(0);
+            info.setFollowee(0);
+        }
+        info.setIntroduce(profile.getIntroduce());
+        info.setGender(profile.getGender());
+        info.setCity(profile.getCity());
+        info.setUpdateTime(LocalDateTime.now());
+        if (createInfo) userInfoService.save(info);
+        else userInfoService.updateById(info);
+
+        if (StrUtil.isNotBlank(token)) {
+            Map<String, String> cached = new HashMap<>();
+            cached.put("nickName", user.getNickName());
+            cached.put("icon", user.getIcon());
+            String key = RedisConstants.LOGIN_USER_KEY + token + ":profile";
+            stringRedisTemplate.opsForHash().putAll(key, cached);
+            stringRedisTemplate.expire(key, RedisConstants.LOGIN_USER_TTL, TimeUnit.SECONDS);
+        }
         return Result.ok();
     }
 

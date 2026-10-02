@@ -3,7 +3,6 @@ package com.campus.bazaar.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.campus.bazaar.dto.Result;
-import com.campus.bazaar.utils.SystemConstants;
 import com.campus.bazaar.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.UUID;
 
 @Slf4j
@@ -24,7 +24,7 @@ public class UploadController {
     private org.springframework.core.env.Environment environment;
 
     private String uploadDir() {
-        return environment.getProperty("bazaar.upload-dir", SystemConstants.IMAGE_UPLOAD_DIR);
+        return environment.getProperty("bazaar.upload-dir", "imgs");
     }
 
     @PostMapping("post")
@@ -33,17 +33,23 @@ public class UploadController {
         if (UserHolder.getUserId() == null) {
             return Result.fail("请先登录");
         }
+        if (image == null || image.isEmpty() || image.getSize() > 5L * 1024 * 1024) {
+            return Result.fail("请选择不超过 5MB 的图片");
+        }
         try {
-            // 获取原始文件名称
             String originalFilename = image.getOriginalFilename();
             if (StrUtil.isBlank(originalFilename) || !originalFilename.contains(".")) {
                 return Result.fail("非法的文件名称");
             }
-            // 生成新文件名
+            String suffix = StrUtil.subAfter(originalFilename, ".", true).toLowerCase();
+            if (!Arrays.asList("jpg", "jpeg", "png", "gif", "webp").contains(suffix)
+                    || image.getContentType() == null || !image.getContentType().startsWith("image/")) {
+                return Result.fail("仅支持 JPG、PNG、GIF 或 WebP 图片");
+            }
             String fileName = createNewFileName(originalFilename);
-            // 保存文件
-            image.transferTo(new File(uploadDir(), fileName));
-            // 返回结果
+            File target = new File(uploadDir(), fileName.substring(1).replace("/", File.separator));
+            FileUtil.mkdir(target.getParentFile());
+            image.transferTo(target);
             log.debug("文件上传成功，{}", fileName);
             return Result.ok(fileName);
         } catch (IOException e) {
@@ -94,11 +100,6 @@ public class UploadController {
         int d1 = hash & 0xF;
         int d2 = (hash >> 4) & 0xF;
         // 判断目录是否存在
-        File dir = new File(SystemConstants.IMAGE_UPLOAD_DIR, StrUtil.format("/blogs/{}/{}", d1, d2));
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        // 生成文件名
         return StrUtil.format("/blogs/{}/{}/{}.{}", d1, d2, name, suffix);
     }
 }

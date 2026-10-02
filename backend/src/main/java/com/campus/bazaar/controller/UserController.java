@@ -2,6 +2,7 @@ package com.campus.bazaar.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.campus.bazaar.dto.LoginFormDTO;
+import com.campus.bazaar.dto.ProfileUpdateDTO;
 import com.campus.bazaar.dto.Result;
 import com.campus.bazaar.dto.UserDTO;
 import com.campus.bazaar.entity.User;
@@ -113,6 +114,13 @@ public class UserController {
     @PutMapping("/nickName")
     public Result updateNickName(@RequestParam("nickName") String nickName) {
         return userService.updateNickName(nickName);
+    }
+
+    /** 修改当前用户个人资料及头像 */
+    @PutMapping("/profile")
+    public Result updateProfile(@RequestBody ProfileUpdateDTO profile,
+                                @RequestHeader(value = "authorization", required = false) String token) {
+        return userService.updateProfile(profile, token);
     }
 
     /** 修改密码 - 必须登录（首次设置密码时 oldPassword 可不传） */

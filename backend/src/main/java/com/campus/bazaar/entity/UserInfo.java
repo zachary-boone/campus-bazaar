@@ -27,7 +27,7 @@ public class UserInfo implements Serializable {
     /**
      * 主键，用户id
      */
-    @TableId(value = "user_id", type = IdType.AUTO)
+    @TableId(value = "user_id", type = IdType.INPUT)
     private Long userId;
 
     /**
@@ -51,9 +51,9 @@ public class UserInfo implements Serializable {
     private Integer followee;
 
     /**
-     * 性别，0：男，1：女
+     * 性别，0：保密，1：男，2：女
      */
-    private Boolean gender;
+    private Integer gender;
 
     /**
      * 生日

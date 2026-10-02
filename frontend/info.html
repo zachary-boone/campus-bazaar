@@ -225,6 +225,44 @@
     }
     .my-post__meta .chip { margin: 0; }
 
+    .my-goods__price {
+      margin-top: 5px;
+      color: #E65353;
+      font-size: 15px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .my-goods__meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 7px;
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .my-goods__status {
+      flex: 0 0 auto;
+      padding: 3px 7px;
+      border-radius: 10px;
+      background: #E8F5E9;
+      color: #2E7D32;
+      white-space: nowrap;
+    }
+    .my-goods__status.s-2 { background: #ECEFF1; color: #65717C; }
+    .my-goods__status.s-3 { background: #FFF3E0; color: #E65100; }
+    .load-more {
+      display: block;
+      margin: 8px auto 16px;
+      padding: 8px 18px;
+      border: 1px solid #DDE2E7;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text-2);
+      font: inherit;
+      font-size: 12px;
+    }
+
     .empty {
       text-align: center;
       padding: 60px 20px;
@@ -243,6 +281,116 @@
       color: var(--accent);
       box-shadow: 0 2px 10px rgba(0,0,0,0.04);
       cursor: pointer;
+    }
+
+    /* Purchased orders */
+    .order-list { padding: 4px 12px 12px; }
+    .order-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--surface);
+      border: 1px solid rgba(31,41,55,0.05);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .order-card__img {
+      display: block;
+      width: 82px;
+      height: 82px;
+      flex: 0 0 82px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #F0F2F4;
+      cursor: pointer;
+    }
+    .order-card__body { flex: 1; min-width: 0; }
+    .order-card__top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .order-card__title {
+      min-width: 0;
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
+      color: var(--text-1);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      cursor: pointer;
+    }
+    .order-card__status {
+      flex: 0 0 auto;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .order-card__status.s-1 { background: #FFF3E0; color: #E65100; }
+    .order-card__status.s-2 { background: var(--primary-light); color: var(--primary-dark); }
+    .order-card__status.s-3 { background: #E8F5E9; color: #2E7D32; }
+    .order-card__status.s-4 { background: #ECEFF1; color: var(--text-3); }
+    .order-card__amount {
+      margin-top: 7px;
+      color: #E65353;
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .order-card__details {
+      display: grid;
+      gap: 4px;
+      margin-top: 9px;
+      padding-top: 8px;
+      border-top: 1px solid #F0F1F3;
+    }
+    .order-card__no, .order-card__loc {
+      min-width: 0;
+      color: var(--text-3);
+      font-size: 11px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .order-card__actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .obtn {
+      min-height: 30px;
+      padding: 5px 11px;
+      border: 1px solid #DDE2E7;
+      border-radius: 6px;
+      background: white;
+      color: var(--text-2);
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+    .obtn--pay {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+    @media (max-width: 360px) {
+      .order-list { padding-right: 8px; padding-left: 8px; }
+      .order-card { gap: 9px; padding: 10px; }
+      .order-card__img { width: 68px; height: 68px; flex-basis: 68px; }
+      .order-card__actions { gap: 6px; }
+      .obtn { padding-right: 8px; padding-left: 8px; }
     }
   </style>
 </head>
@@ -269,7 +417,7 @@
     <div class="me-stats">
       <div class="me-stats__cell" @click="switchTab('1')">
         <div class="me-stats__n">{{stats.goods}}</div>
-        <div class="me-stats__label">在售</div>
+        <div class="me-stats__label">发布商品</div>
       </div>
       <div class="me-stats__cell" @click="switchTab('2')">
         <div class="me-stats__n">{{stats.sold}}</div>
@@ -297,9 +445,9 @@
         <div class="me-menu__label">运费券</div>
         <div class="me-menu__sub" v-if="sign.claimable > 0">待领 {{sign.claimable}} 张</div>
       </div>
-      <div class="me-menu__cell green" @click="go('发布')">
+      <div class="me-menu__cell green" @click="go('发布商品')">
         <div class="me-menu__icon">📝</div>
-        <div class="me-menu__label">发布帖子</div>
+        <div class="me-menu__label">发布商品</div>
       </div>
       <div class="me-menu__cell purple" @click="go('收藏')">
         <div class="me-menu__icon">⭐</div>
@@ -308,80 +456,36 @@
     </div>
 
     <div class="me-tab">
-      <div class="me-tab__item" :class="{active: tab==='1'}" @click="switchTab('1')">我发布的 ({{posts.length}})</div>
+      <div class="me-tab__item" :class="{active: tab==='1'}" @click="switchTab('1')">我发布的 ({{stats.goods}})</div>
       <div class="me-tab__item" :class="{active: tab==='2'}" @click="switchTab('2')">我购买的 ({{stats.bought}})</div>
       <div class="me-tab__item" :class="{active: tab==='3'}" @click="switchTab('3')">收藏 ({{stats.fav}})</div>
     </div>
 
     <div v-if="tab==='1'">
-      <div v-if="!posts.length" class="empty">
+      <div v-if="!myGoods.length && !goodsLoading" class="empty">
         <div class="empty__icon">📦</div>
-        <div>你还没发布过任何东西</div>
+        <div>你还没有发布过商品</div>
         <div style="margin-top: 16px">
-          <button @click="go('发布')" style="background: var(--primary); color: white; border: none; border-radius: 18px; padding: 8px 18px; font-size: 13px">立即发布 ›</button>
+          <button @click="go('发布商品')" style="background: var(--primary); color: white; border: none; border-radius: 18px; padding: 8px 18px; font-size: 13px">立即发布 ›</button>
         </div>
       </div>
-      <div class="my-post" v-for="p in posts" :key="p.id" @click="toPost(p.id)">
-        <img class="my-post__cover" :src="(p.images||'').split(',')[0] || '/imgs/post-dorm.svg'" @error="onImgErr">
+      <div v-if="goodsLoading && !myGoods.length" class="empty">正在加载商品…</div>
+      <div class="my-post" v-for="g in myGoods" :key="g.id" @click="toGoods(g.id)">
+        <img class="my-post__cover" :src="firstImage(g.images)" @error="onImgErr">
         <div class="my-post__body">
-          <div class="my-post__title">{{p.title}}</div>
-          <div class="my-post__preview">{{preview(p.content)}}</div>
-          <div class="my-post__meta">
-            <span><span class="chip">{{getTypeLabel(p.postType)}}</span></span>
-            <span><i style="color: var(--accent)">♥</i> {{p.liked}} · 💬 {{p.comments}}</span>
+          <div class="my-post__title">{{g.name || '未命名商品'}}</div>
+          <div class="my-goods__price">¥ {{g.price}}</div>
+          <div class="my-goods__meta">
+            <span>{{[g.area, g.address].filter(Boolean).join(' · ') || '未填写交易地点'}}</span>
+            <span class="my-goods__status" :class="'s-' + g.status">{{goodsStatus(g.status)}}</span>
           </div>
         </div>
       </div>
+      <button v-if="goodsHasMore && !goodsLoading" class="load-more" @click="queryMyGoods(true)">加载更多</button>
+      <div v-if="goodsLoading && myGoods.length" class="empty" style="padding: 16px">正在加载…</div>
     </div>
 
     <div v-else-if="tab==='2'">
-      <style>
-        .order-card {
-          display: flex; gap: 12px;
-          background: white;
-          border-radius: 14px;
-          padding: 12px;
-          margin-bottom: 10px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-        }
-        .order-card__img {
-          width: 84px; height: 84px; border-radius: 10px;
-          object-fit: cover; flex-shrink: 0; background: #F0F0F0;
-        }
-        .order-card__body { flex: 1; min-width: 0; }
-        .order-card__title {
-          font-size: 14px; font-weight: 600; line-height: 1.35;
-          overflow: hidden; display: -webkit-box;
-          -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-        }
-        .order-card__row {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-top: 6px;
-        }
-        .order-card__amount { color: var(--accent); font-weight: 700; font-size: 16px; }
-        .order-card__status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-        .order-card__status.s-1 { background: #FFF3E0; color: #E65100; }
-        .order-card__status.s-2 { background: var(--primary-light); color: var(--primary-dark); }
-        .order-card__status.s-3 { background: #E8F5E9; color: #2E7D32; }
-        .order-card__status.s-4 { background: #ECEFF1; color: var(--text-3); }
-        .order-card__no, .order-card__loc {
-          font-size: 11px; color: var(--text-3); margin-top: 4px;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .order-card__actions {
-          display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
-        }
-        .obtn {
-          border: 1px solid #E5E7EB; background: white; color: var(--text-2);
-          border-radius: 14px; padding: 5px 12px; font-size: 12px;
-        }
-        .obtn--pay {
-          border: none; color: white;
-          background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-          font-weight: 600;
-        }
-      </style>
-
       <div v-if="!orders.length" class="empty">
         <div class="empty__icon">🛍️</div>
         <div>还没有购买记录</div>
@@ -390,18 +494,21 @@
         </div>
       </div>
 
+      <div class="order-list">
       <div class="order-card" v-for="o in orders" :key="o.orderNo">
         <img class="order-card__img" :src="o.img || '/imgs/goods/0.svg'"
              @error="onImgErr" @click="toGoods(o.goodsId)">
         <div class="order-card__body">
-          <div class="order-card__title" @click="toGoods(o.goodsId)">{{ o.goodsName || ('商品 #' + o.goodsId) }}</div>
-          <div class="order-card__row">
-            <span class="order-card__amount">¥ {{ o.amount }}</span>
+          <div class="order-card__top">
+            <div class="order-card__title" @click="toGoods(o.goodsId)">{{ o.goodsName || ('商品 #' + o.goodsId) }}</div>
             <span class="order-card__status" :class="'s-' + o.status">{{ statusText(o.status) }}</span>
           </div>
-          <div class="order-card__no">订单号 {{ o.orderNo }}</div>
-          <div class="order-card__loc" v-if="o.tradeLocation">📍 面交：{{ o.tradeLocation }}</div>
-          <div class="order-card__loc" v-if="o.tradeTime">🕙 时间：{{ o.tradeTime }}</div>
+          <div class="order-card__amount">¥ {{ o.amount }}</div>
+          <div class="order-card__details">
+            <div class="order-card__no">订单号 {{ o.orderNo }}</div>
+            <div class="order-card__loc" v-if="o.tradeLocation">📍 面交：{{ o.tradeLocation }}</div>
+            <div class="order-card__loc" v-if="o.tradeTime">🕙 时间：{{ o.tradeTime }}</div>
+          </div>
           <div class="order-card__actions">
             <button v-if="o.status===1" class="obtn obtn--pay" @click="payOrder(o)">去支付</button>
             <button v-if="o.status===1" class="obtn" @click="cancelOrder(o)">取消订单</button>
@@ -409,6 +516,7 @@
             <button class="obtn" @click="toGoods(o.goodsId)">查看商品</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -431,7 +539,10 @@
     data: {
       util,
       user: {},
-      posts: [],
+      myGoods: [],
+      goodsPage: 1,
+      goodsHasMore: false,
+      goodsLoading: false,
       orders: [],
       tab: '1',
       sign: { streak: 0, todaySigned: false, claimable: 0 },
@@ -441,7 +552,7 @@
       const t = util.getUrlParam('tab');
       if (t) this.tab = t;
       this.queryMe();
-      this.queryMyPosts();
+      this.queryMyGoods(false);
       this.queryMyOrders();
       this.querySignInfo();
     },
@@ -453,7 +564,7 @@
       toPost(id) { location.href = '/post-detail.html?id=' + id; },
       toGoods(id) { if (id) location.href = '/shop-detail.html?id=' + id; },
       go(name) {
-        if (name === '发布') location.href = '/post-edit.html';
+        if (name === '发布商品') location.href = '/goods-edit.html';
         else if (name === '签到' || name === '运费券') location.href = '/sign.html';
         else this.$message.info(name + '功能即将上线');
       },
@@ -471,15 +582,14 @@
           .catch(() => {});
       },
       onImgErr(e) { e.target.src = '/imgs/goods/0.svg'; },
-      preview(c) { return (c || '').replace(/<[^>]+>/g, '').slice(0, 50); },
-      getTypeLabel(t) {
-        return ({ 1: '出物', 2: '求购', 3: '拼单', 4: '分享' })[t] || '出物';
-      },
+      firstImage(images) { return (images || '').split(',').filter(Boolean)[0] || '/imgs/goods/0.svg'; },
+      goodsStatus(s) { return ({ 1: '在售', 2: '已售出', 3: '已下架', 4: '交易中' })[s] || '未知状态'; },
       statusText(s) {
         return ({ 1: '待支付', 2: '已支付', 3: '已完成', 4: '已取消', 5: '退款中', 6: '已退款' })[s] || '未知';
       },
       switchTab(t) {
         this.tab = t;
+        if (t === '1') this.queryMyGoods(false);
         if (t === '2') this.queryMyOrders();
       },
       queryMe() {
@@ -514,15 +624,23 @@
         if (!sessionStorage.getItem('token')) { this.$message.error('请先登录'); return; }
         location.href = '/follow-list.html?tab=' + tab;
       },
-      queryMyPosts() {
+      queryMyGoods(loadMore) {
         const token = sessionStorage.getItem('token');
-        if (!token) { this.posts = []; return; }
-        axios.get('/post/of/me?current=1')
-          .then(({data}) => {
-            this.posts = data || [];
-            this.stats.goods = this.posts.length;
+        if (!token) { this.myGoods = []; this.stats.goods = 0; return; }
+        if (this.goodsLoading) return;
+        if (!loadMore) this.goodsPage = 1;
+        this.goodsLoading = true;
+        axios.get('/goods/of/me', { params: { current: this.goodsPage } })
+          .then(({data, total}) => {
+            const list = Array.isArray(data) ? data : [];
+            this.myGoods = loadMore ? this.myGoods.concat(list) : list;
+            this.stats.goods = Number(total) || 0;
+            this.stats.sold = this.myGoods.filter(g => g.status === 2).length;
+            this.goodsHasMore = this.myGoods.length < this.stats.goods;
+            this.goodsPage += 1;
           })
-          .catch(() => { this.posts = []; });
+          .catch(err => this.util.toast((err && err.toString && err.toString()) || '商品列表加载失败', 'error'))
+          .finally(() => { this.goodsLoading = false; });
       },
       /** 我购买的：真实订单列表（/order/my/），并回填商品名/图 */
       queryMyOrders() {
@@ -533,7 +651,6 @@
             const list = Array.isArray(data) ? data : ((data && data.list) || []);
             this.orders = list;
             this.stats.bought = list.length;
-            this.stats.sold = list.filter(o => o.status >= 2).length;
             this.fillGoodsInfo(list);
           })
           .catch(() => { this.orders = []; });

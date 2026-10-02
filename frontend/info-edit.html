@@ -30,9 +30,23 @@
       flex-shrink: 0;
       object-fit: cover;
     }
+    .ie-avatar-picker {
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .ie-file-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
     .ie-avatar-info { flex: 1; }
     .ie-avatar-info h3 { margin: 0 0 4px; font-size: 15px; }
     .ie-avatar-info p { margin: 0; font-size: 12px; color: var(--text-3); }
+    .ie-avatar-info .ie-upload-hint { margin-top: 4px; color: var(--primary-dark); }
     .ie-avatar-btn {
       background: var(--primary-light);
       color: var(--primary-dark);
@@ -144,19 +158,23 @@
   <div class="app-bar">
     <div class="app-bar__back" @click="goBack"><i class="el-icon-arrow-left"></i></div>
     <div class="app-bar__title">编辑资料</div>
-    <div class="app-bar__action" @click="saveDraft" style="font-size: 13px; padding: 8px 4px">草稿</div>
+    <div class="app-bar__action" @click="save" style="font-size: 13px; padding: 8px 4px">保存</div>
   </div>
 
   <div class="ie-content">
 
     <!-- 头像 -->
     <div class="ie-avatar-card">
-      <img class="ie-avatar" :src="form.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
+      <img class="ie-avatar" :src="avatarPreview || form.icon || '/imgs/icons/default-icon.svg'" @error="onImgErr">
       <div class="ie-avatar-info">
         <h3>{{form.nickName || '设置昵称'}}</h3>
-        <p>📚 {{form.school || '校园小黑市'}} · ID: {{userId || '0001'}}</p>
+        <p>📚 {{form.city || '设置所在校区'}} · ID: {{userId || '0001'}}</p>
+        <p class="ie-upload-hint" v-if="pendingAvatar">图片已选中，点击保存后生效</p>
       </div>
-      <button class="ie-avatar-btn" @click="changeAvatar">更换</button>
+      <label class="ie-avatar-btn ie-avatar-picker" for="avatarFile">
+        {{pendingAvatar ? '已选择' : '更换'}}
+        <input id="avatarFile" class="ie-file-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="selectAvatar">
+      </label>
     </div>
 
     <!-- 基本资料 -->
@@ -182,73 +200,18 @@
           <span class="chip" :class="{active: form.gender===0}" @click="form.gender=0">保密</span>
         </div>
       </div>
-      <div class="ie-form__row" @click="showDormPicker">
-        <div class="ie-form__label">所在楼栋</div>
-        <input class="ie-form__input" v-model="form.dorm" placeholder="选择你宿舍所在楼栋" readonly>
-        <i class="ie-form__arrow el-icon-arrow-right"></i>
-      </div>
       <div class="ie-form__row">
-        <div class="ie-form__label">年级</div>
-        <select class="ie-form__input" v-model="form.grade">
-          <option value="">选择年级</option>
-          <option>大一</option>
-          <option>大二</option>
-          <option>大三</option>
-          <option>大四</option>
-          <option>研一</option>
-          <option>研二</option>
-          <option>研三</option>
-          <option>已毕业</option>
-        </select>
-      </div>
-      <div class="ie-form__row">
-        <div class="ie-form__label">生日</div>
-        <input class="ie-form__input" type="date" v-model="form.birthday">
+        <div class="ie-form__label">所在校区</div>
+        <input class="ie-form__input" v-model="form.city" placeholder="例如：东校区" maxlength="64">
       </div>
     </div>
-
-    <!-- 联系方式 -->
-    <div class="ie-form">
-      <div class="ie-form__row">
-        <div class="ie-form__label">QQ</div>
-        <input class="ie-form__input" v-model="form.qq" placeholder="方便学弟学妹拼单">
-      </div>
-      <div class="ie-form__row">
-        <div class="ie-form__label">微信</div>
-        <input class="ie-form__input" v-model="form.wechat" placeholder="扫码自取">
-      </div>
-    </div>
-
-    <!-- 偏好 -->
-    <div class="ie-form">
-      <div class="ie-form__row">
-        <div class="ie-form__label">交易偏好</div>
-        <div class="ie-form__chip-row">
-          <span class="chip" :class="{active: form.prefer.includes('面交')}" @click="togglePrefer('面交')">宿舍自提</span>
-          <span class="chip" :class="{active: form.prefer.includes('快递')}" @click="togglePrefer('快递')">包邮快递</span>
-          <span class="chip" :class="{active: form.prefer.includes('拼单')}" @click="togglePrefer('拼单')">支持拼单</span>
-        </div>
-      </div>
-    </div>
-
     <div class="ie-actions">
-      <button class="ie-btn" @click="save">保存修改</button>
+      <button class="ie-btn" @click="save" :disabled="saving">{{saving ? '正在保存…' : '保存修改'}}</button>
     </div>
 
     <div class="ie-logout" @click="logout">退出登录</div>
   </div>
 
-  <!-- 楼栋选择弹层 -->
-  <div class="pe-mask" v-if="showDorm" @click="showDorm=false" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10"></div>
-  <div v-if="showDorm" style="position:fixed; left:0; right:0; bottom:0; background:white; border-radius:20px 20px 0 0; z-index:11; padding: 16px">
-    <div style="font-weight: 600; padding-bottom: 12px; text-align: center">选择楼栋</div>
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px">
-      <div v-for="d in dormOptions" :key="d"
-        @click="selectDorm(d)"
-        style="background: var(--primary-light); padding: 12px; border-radius: 10px; text-align: center; cursor: pointer; font-size: 13px"
-      >{{d}}</div>
-    </div>
-  </div>
 </div>
 
 <script src="./js/vue.js"></script>
@@ -261,62 +224,80 @@
     data: {
       util,
       userId: '1001',
+      avatarPreview: '',
+      pendingAvatar: null,
+      saving: false,
       form: {
         icon: '/imgs/icons/default-icon.svg',
         nickName: '校园同学',
-        introduc: '',
+        introduce: '',
         gender: 0,
-        dorm: '',
-        grade: '',
-        birthday: '',
-        qq: '',
-        wechat: '',
-        prefer: [],
-        school: '校园小黑市'
+        city: ''
       },
-      showDorm: false,
-      dormOptions: ['1号楼', '2号楼', '3号楼', '紫荆楼', '南区', '西区', '研究生公寓']
     },
     created() {
-      // 尝试读 session 缓存
-      const cached = sessionStorage.getItem('userInfo');
-      if (cached) {
-        try {
-          const obj = JSON.parse(cached);
-          Object.assign(this.form, obj);
-        } catch (e) {}
-      }
+      this.loadProfile();
     },
     methods: {
       goBack() { history.back(); },
       onImgErr(e) { e.target.src = '/imgs/icons/default-icon.svg'; },
-      changeAvatar() {
-        // 演示版：循环切换 SVG
-        const samples = [
-          '/imgs/icons/default-icon.svg',
-          '/imgs/goods/1.svg',
-          '/imgs/goods/8.svg',
-          '/imgs/goods/13.svg'
-        ];
-        const idx = samples.indexOf(this.form.icon);
-        this.form.icon = samples[(idx + 1) % samples.length];
-        this.$message.success('头像已切换');
+      loadProfile() {
+        if (!sessionStorage.getItem('token')) {
+          this.$message.error('请先登录');
+          location.href = '/login.html';
+          return;
+        }
+        axios.get('/user/me').then(({data}) => {
+          this.userId = data.id;
+          this.form.nickName = data.nickName || '';
+          this.form.icon = data.icon || '/imgs/icons/default-icon.svg';
+          return axios.get('/user/info/' + data.id);
+        }).then(({data}) => {
+          if (!data) return;
+          this.form.introduce = data.introduce || '';
+          this.form.gender = data.gender == null ? 0 : Number(data.gender);
+          this.form.city = data.city || '';
+        }).catch(err => this.util.toast((err && err.toString && err.toString()) || '资料加载失败', 'error'));
       },
-      togglePrefer(t) {
-        const i = this.form.prefer.indexOf(t);
-        if (i > -1) this.form.prefer.splice(i, 1);
-        else this.form.prefer.push(t);
+      selectAvatar(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+          this.$message.error('请选择 JPG、PNG、GIF 或 WebP 图片，且不超过 5MB');
+          return;
+        }
+        this.pendingAvatar = file;
+        this.avatarPreview = URL.createObjectURL(file);
       },
-      showDormPicker() { this.showDorm = true; },
-      selectDorm(d) { this.form.dorm = d; this.showDorm = false; },
       save() {
-        sessionStorage.setItem('userInfo', JSON.stringify(this.form));
-        this.$message.success('🎉 资料保存成功');
-        setTimeout(() => location.href = '/info.html', 800);
-      },
-      saveDraft() {
-        sessionStorage.setItem('userInfo', JSON.stringify(this.form));
-        this.$message.info('已保存到草稿');
+        if (this.saving) return;
+        this.saving = true;
+        const uploadAvatar = this.pendingAvatar ? (() => {
+          const body = new FormData();
+          body.append('file', this.pendingAvatar);
+          return axios.post('/upload/post', body, { timeout: 30000 }).then(({data}) => {
+            this.form.icon = '/imgs' + data;
+          });
+        })() : Promise.resolve();
+        uploadAvatar.then(() => axios.put('/user/profile', {
+          nickName: this.form.nickName,
+          icon: this.form.icon,
+          introduce: this.form.introduce,
+          gender: this.form.gender,
+          city: this.form.city
+        })).then(() => {
+          sessionStorage.setItem('userCache', JSON.stringify({
+            id: this.userId,
+            nickName: this.form.nickName,
+            icon: this.form.icon
+          }));
+          this.pendingAvatar = null;
+          this.avatarPreview = '';
+          this.$message.success('资料已保存');
+          setTimeout(() => location.href = '/info.html', 600);
+        }).catch(err => this.util.toast((err && err.toString && err.toString()) || '保存失败，请重试', 'error'))
+          .finally(() => { this.saving = false; });
       },
       logout() {
         // 换成站内弹窗：原生 confirm 会阻塞页面，且点击遮罩也无法关闭
